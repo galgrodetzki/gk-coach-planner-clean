@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, Copy, ChevronDown, ChevronRight, Clock, Target, Shield, ArrowLeft, X, Search, BookOpen, Heart, Printer, GripVertical, AlertCircle, Sparkles, Link2, CalendarDays, Cloud, CloudOff, RefreshCw, LogIn, LogOut, User } from "lucide-react";
-import { supabase, isSupabaseConfigured } from "./lib/supabase";
+import { Plus, Trash2, Copy, ChevronDown, ChevronRight, Clock, Target, Shield, ArrowLeft, X, Search, BookOpen, Heart, Printer, GripVertical, AlertCircle, Sparkles, Link2, CalendarDays, User } from "lucide-react";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -454,13 +453,6 @@ export default function GKCoachPlanner() {
   const [monthCursor, setMonthCursor] = useState(() => new Date());
   const [selectedDateKey, setSelectedDateKey] = useState(() => new Date().toISOString().slice(0, 10));
   const [shareNotice, setShareNotice] = useState("");
-  const [syncStatus, setSyncStatus] = useState(isSupabaseConfigured ? "Not signed in" : "Local-only mode");
-  const [syncError, setSyncError] = useState("");
-  const [authUser, setAuthUser] = useState(null);
-  const [authMode, setAuthMode] = useState("signin");
-  const [authForm, setAuthForm] = useState({ email: "", password: "" });
-  const [authBusy, setAuthBusy] = useState(false);
-  const [syncQueued, setSyncQueued] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -493,24 +485,6 @@ export default function GKCoachPlanner() {
     setShareNotice(`Imported shared session: ${imported.name}`);
   }, []);
 
-  useEffect(() => {
-    if (!isSupabaseConfigured || !supabase) return undefined;
-    let active = true;
-    supabase.auth.getSession().then(({ data }) => {
-      if (!active) return;
-      setAuthUser(data.session?.user ?? null);
-      setSyncStatus(data.session?.user ? "Signed in" : "Not signed in");
-    });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setAuthUser(session?.user ?? null);
-      setSyncStatus(session?.user ? "Signed in" : "Not signed in");
-    });
-    return () => {
-      active = false;
-      listener.subscription.unsubscribe();
-    };
-  }, []);
-
   const filteredDrills = useMemo(() => {
     return DRILL_LIBRARY.filter(d => {
       const ms = !libSearch || d.name.toLowerCase().includes(libSearch.toLowerCase()) || d.desc.toLowerCase().includes(libSearch.toLowerCase()) || d.cp?.toLowerCase().includes(libSearch.toLowerCase());
@@ -535,93 +509,8 @@ export default function GKCoachPlanner() {
   const editing = sessions.find(s => s.id === editingSession);
   const monthGrid = getMonthGrid(monthCursor);
 
-  const queueSync = () => {
-    if (authUser && isSupabaseConfigured) setSyncQueued(true);
-  };
-
-  const pullCloudSnapshot = async (userId = authUser?.id) => {
-    if (!supabase || !userId) return;
-    setSyncError("");
-    setSyncStatus("Loading cloud data...");
-    const { data, error } = await supabase.from("planner_snapshots").select("sessions, calendar_entries, favorites, recent").eq("user_id", userId).maybeSingle();
-    if (error) {
-      setSyncStatus("Cloud load failed");
-      setSyncError(error.message);
-      return;
-    }
-    if (data) {
-      setSessions(Array.isArray(data.sessions) ? data.sessions : []);
-      setCalendarEntries(data.calendar_entries || {});
-      setFavoriteIds(Array.isArray(data.favorites) ? data.favorites : []);
-      setRecentIds(Array.isArray(data.recent) ? data.recent : []);
-    }
-    setSyncStatus("Cloud data loaded");
-  };
-
-  const pushCloudSnapshot = async () => {
-    if (!supabase || !authUser) return;
-    setSyncError("");
-    setSyncStatus("Syncing to cloud...");
-    const payload = {
-      user_id: authUser.id,
-      sessions,
-      calendar_entries: calendarEntries,
-      favorites: favoriteIds,
-      recent: recentIds,
-      updated_at: new Date().toISOString(),
-    };
-    const { error } = await supabase.from("planner_snapshots").upsert(payload, { onConflict: "user_id" });
-    if (error) {
-      setSyncStatus("Cloud sync failed");
-      setSyncError(error.message);
-      return;
-    }
-    setSyncStatus("Cloud synced");
-  };
-
-  useEffect(() => {
-    if (!syncQueued || !authUser || !isSupabaseConfigured) return;
-    const timeout = setTimeout(() => {
-      pushCloudSnapshot();
-      setSyncQueued(false);
-    }, 800);
-    return () => clearTimeout(timeout);
-  }, [syncQueued, authUser, sessions, calendarEntries, favoriteIds, recentIds]);
-
-  useEffect(() => {
-    if (authUser && isSupabaseConfigured) {
-      pullCloudSnapshot(authUser.id);
-    }
-  }, [authUser?.id]);
-
-  const handleAuthSubmit = async () => {
-    if (!supabase) return;
-    setAuthBusy(true);
-    setSyncError("");
-    try {
-      if (authMode === "signin") {
-        const { error } = await supabase.auth.signInWithPassword(authForm);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.auth.signUp(authForm);
-        if (error) throw error;
-        setSyncStatus("Check your email to confirm sign-up");
-      }
-    } catch (error) {
-      setSyncError(error.message);
-    } finally {
-      setAuthBusy(false);
-    }
-  };
-
-  const handleSignOut = async () => {
-    if (!supabase) return;
-    await supabase.auth.signOut();
-  };
-
   const toggleFavorite = (id) => {
     setFavoriteIds(prev => prev.includes(id) ? prev.filter(item => item !== id) : [id, ...prev]);
-    queueSync();
   };
 
   const addDrillToSession = (drill) => {
@@ -629,7 +518,6 @@ export default function GKCoachPlanner() {
     const updated = sessions.map(s => s.id === editingSession ? { ...s, drills: [...s.drills, { ...drill, _uid: uid() }] } : s);
     setSessions(updated);
     setRecentIds(prev => [drill.id, ...prev.filter(id => id !== drill.id)].slice(0, 8));
-    queueSync();
   };
 
   const createSession = () => {
@@ -637,7 +525,6 @@ export default function GKCoachPlanner() {
     setSessions([...sessions, s]);
     setEditingSession(s.id);
     setTab("sessions");
-    queueSync();
   };
 
   const createFromTemplate = (template) => {
@@ -645,25 +532,21 @@ export default function GKCoachPlanner() {
     setSessions([...sessions, session]);
     setEditingSession(session.id);
     setTab("sessions");
-    queueSync();
   };
 
   const duplicateSession = (s) => {
     const ns = { ...JSON.parse(JSON.stringify(s)), id: uid(), name: s.name + " (Copy)" };
     setSessions([...sessions, ns]);
-    queueSync();
   };
 
   const updateSession = (updatedSession) => {
     setSessions(sessions.map(session => session.id === updatedSession.id ? updatedSession : session));
-    queueSync();
   };
 
   const deleteSession = (id) => {
     setSessions(sessions.filter(session => session.id !== id));
     setCalendarEntries(Object.fromEntries(Object.entries(calendarEntries).filter(([, value]) => value !== id)));
     if (editingSession === id) setEditingSession(null);
-    queueSync();
   };
 
   const handleShareSession = async (session) => {
@@ -680,7 +563,6 @@ export default function GKCoachPlanner() {
 
   const assignSessionToDate = (dateKey, sessionId) => {
     setCalendarEntries(prev => ({ ...prev, [dateKey]: sessionId || null }));
-    queueSync();
   };
 
   const DrillPicker = () => (
@@ -725,10 +607,7 @@ export default function GKCoachPlanner() {
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-            <Badge color={isSupabaseConfigured ? colors.accentLight : colors.warmLight} textColor={isSupabaseConfigured ? colors.accent : "#92400e"}>
-              {isSupabaseConfigured ? <Cloud size={12} style={{ marginRight: 4 }} /> : <CloudOff size={12} style={{ marginRight: 4 }} />}
-              {syncStatus}
-            </Badge>
+            <Badge color={colors.successLight} textColor={colors.success}>Local save on this device</Badge>
             <Button onClick={createSession} size="sm"><Plus size={14} /> New Session</Button>
             <Button onClick={() => createFromTemplate(SESSION_TEMPLATES[0])} variant="secondary" size="sm"><Sparkles size={14} /> Quick Template</Button>
           </div>
@@ -736,9 +615,9 @@ export default function GKCoachPlanner() {
       </div>
 
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "16px 24px" }}>
-        {(shareNotice || syncError) && (
+        {shareNotice && (
           <div style={{ marginBottom: 14, padding: 12, borderRadius: 8, background: shareNotice ? colors.successLight : colors.dangerLight, color: shareNotice ? colors.success : colors.danger }}>
-            {shareNotice || syncError}
+            {shareNotice}
           </div>
         )}
 
@@ -817,7 +696,6 @@ export default function GKCoachPlanner() {
                 <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
                   <input value={sessionSearch} onChange={e => setSessionSearch(e.target.value)} placeholder="Search sessions..." style={{ flex: 1, padding: "7px 12px", border: "1px solid " + colors.border, borderRadius: 6, fontSize: 13 }} />
                   <Button onClick={createSession}><Plus size={14} /> New Session</Button>
-                  {authUser && isSupabaseConfigured && <Button onClick={pushCloudSnapshot} variant="secondary"><RefreshCw size={14} /> Sync Now</Button>}
                 </div>
                 {sessions.length === 0 && (
                   <div style={{ textAlign: "center", padding: 60, color: colors.textMuted }}>
@@ -885,37 +763,12 @@ export default function GKCoachPlanner() {
           <div style={{ background: "#fff", border: "1px solid " + colors.border, borderRadius: 12, padding: 16, position: "sticky", top: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
               <User size={16} />
-              <h3 style={{ margin: 0, fontSize: 15 }}>Account & Sync</h3>
+              <h3 style={{ margin: 0, fontSize: 15 }}>Selected Day</h3>
             </div>
-            {!isSupabaseConfigured && (
-              <div style={{ fontSize: 13, color: colors.textMuted, lineHeight: 1.6 }}>
-                Cloud sync is ready in the app, but it needs Supabase keys before sign-in can work.
-                Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`, then create the SQL table from the schema file.
-              </div>
-            )}
-            {isSupabaseConfigured && !authUser && (
-              <>
-                <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-                  <Button variant={authMode === "signin" ? "primary" : "secondary"} size="sm" onClick={() => setAuthMode("signin")}>Sign In</Button>
-                  <Button variant={authMode === "signup" ? "primary" : "secondary"} size="sm" onClick={() => setAuthMode("signup")}>Create Account</Button>
-                </div>
-                <Input label="Email" value={authForm.email} onChange={value => setAuthForm({ ...authForm, email: value })} placeholder="coach@example.com" />
-                <Input label="Password" type="password" value={authForm.password} onChange={value => setAuthForm({ ...authForm, password: value })} placeholder="At least 6 characters" />
-                <Button onClick={handleAuthSubmit} disabled={authBusy} style={{ width: "100%" }}>{authBusy ? <RefreshCw size={14} /> : <LogIn size={14} />}{authMode === "signin" ? "Sign In" : "Create Account"}</Button>
-              </>
-            )}
-            {authUser && (
-              <>
-                <div style={{ fontSize: 13, marginBottom: 10 }}><strong>{authUser.email}</strong></div>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-                  <Button variant="secondary" size="sm" onClick={pushCloudSnapshot}><Cloud size={14} /> Push</Button>
-                  <Button variant="secondary" size="sm" onClick={() => pullCloudSnapshot()}><RefreshCw size={14} /> Pull</Button>
-                  <Button variant="ghost" size="sm" onClick={handleSignOut}><LogOut size={14} /> Sign Out</Button>
-                </div>
-              </>
-            )}
+            <div style={{ fontSize: 13, color: colors.textMuted, lineHeight: 1.6, marginBottom: 16 }}>
+              Your sessions now save locally on this device only. Use the calendar here to assign a session to any day.
+            </div>
             <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid " + colors.border }}>
-              <h4 style={{ margin: "0 0 10px", fontSize: 14 }}>Selected Day</h4>
               <div style={{ fontSize: 13, color: colors.textMuted, marginBottom: 8 }}>{selectedDateKey}</div>
               <select value={calendarEntries[selectedDateKey] || ""} onChange={event => assignSessionToDate(selectedDateKey, event.target.value)} style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid " + colors.border, fontSize: 13 }}>
                 <option value="">No session</option>
