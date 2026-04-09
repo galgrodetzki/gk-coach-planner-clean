@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, Copy, ChevronDown, ChevronRight, Clock, Target, Shield, ArrowLeft, X, Search, BookOpen, Heart, Printer, GripVertical, AlertCircle, Sparkles } from "lucide-react";
+import { Plus, Trash2, Copy, ChevronDown, ChevronRight, Clock, Target, Shield, ArrowLeft, X, Search, BookOpen, Heart, Printer, GripVertical, AlertCircle, Sparkles, Link2, CalendarDays, Cloud, CloudOff, RefreshCw, LogIn, LogOut, User } from "lucide-react";
+import { supabase, isSupabaseConfigured } from "./lib/supabase";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -123,6 +124,7 @@ const STORAGE_KEYS = {
   sessions: "gk_coach_sessions_v2",
   favorites: "gk_coach_favorites_v1",
   recent: "gk_coach_recent_v1",
+  calendar: "gk_coach_calendar_v1",
 };
 
 const SESSION_TEMPLATES = [
@@ -222,6 +224,37 @@ function printSession(session) {
   printWindow.print();
 }
 
+function encodeSessionShare(session) {
+  if (typeof window === "undefined") return "";
+  return window.btoa(unescape(encodeURIComponent(JSON.stringify(session))));
+}
+
+function decodeSessionShare(encoded) {
+  if (typeof window === "undefined") return null;
+  try {
+    return JSON.parse(decodeURIComponent(escape(window.atob(encoded))));
+  } catch {
+    return null;
+  }
+}
+
+function getMonthGrid(currentDate) {
+  const start = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+  const end = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+  const firstWeekday = (start.getDay() + 6) % 7;
+  const days = [];
+  for (let i = 0; i < firstWeekday; i += 1) days.push(null);
+  for (let day = 1; day <= end.getDate(); day += 1) {
+    days.push(new Date(currentDate.getFullYear(), currentDate.getMonth(), day));
+  }
+  while (days.length % 7 !== 0) days.push(null);
+  return days;
+}
+
+function formatDateKey(date) {
+  return date.toISOString().slice(0, 10);
+}
+
 function Badge({ children, color = colors.accentLight, textColor = colors.accent, style }) {
   return <span style={{ display: "inline-block", padding: "2px 10px", borderRadius: 4, fontSize: 12, fontWeight: 600, background: color, color: textColor, letterSpacing: 0.3, whiteSpace: "nowrap", ...style }}>{children}</span>;
 }
@@ -280,7 +313,7 @@ function DrillCard({ drill, onAdd, expanded, onToggle, isFavorite, onToggleFavor
   );
 }
 
-function SessionBuilder({ session, onUpdate, onBack, onAddDrill }) {
+function SessionBuilder({ session, onUpdate, onBack, onAddDrill, onShare }) {
   const totalTime = session.drills.reduce((s, d) => s + (d.dur || 0), 0);
   const warnings = getSessionWarnings(session);
   const removeDrill = (i) => onUpdate({ ...session, drills: session.drills.filter((_, idx) => idx !== i) });
@@ -326,6 +359,7 @@ function SessionBuilder({ session, onUpdate, onBack, onAddDrill }) {
         <Badge color={colors.warmLight} textColor="#92400e" style={{ fontSize: 13, padding: "6px 14px" }}>{session.drills.length} drills</Badge>
         <Button onClick={onAddDrill} variant="primary" size="sm"><Plus size={14} /> Add Drills from Library</Button>
         <Button onClick={() => printSession(session)} variant="secondary" size="sm"><Printer size={14} /> Print / PDF</Button>
+        <Button onClick={() => onShare(session)} variant="secondary" size="sm"><Link2 size={14} /> Share Link</Button>
       </div>
       {warnings.length > 0 && (
         <div style={{ marginBottom: 14, padding: 12, borderRadius: 8, background: colors.warmLight, color: "#92400e", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
@@ -370,7 +404,7 @@ function SessionBuilder({ session, onUpdate, onBack, onAddDrill }) {
   );
 }
 
-function SessionCard({ session, onOpen, onDuplicate, onDelete, onPrint }) {
+function SessionCard({ session, onOpen, onDuplicate, onDelete, onPrint, onShare }) {
   const totalTime = session.drills.reduce((s, d) => s + (d.dur || 0), 0);
   const cats = [...new Set(session.drills.map(d => d.cat))];
   const warnings = getSessionWarnings(session);
@@ -381,6 +415,7 @@ function SessionCard({ session, onOpen, onDuplicate, onDelete, onPrint }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
         <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>{session.name}</h3>
         <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+          <button type="button" onClick={e => { e.stopPropagation(); onShare(); }} style={{ background: "none", border: "none", cursor: "pointer", color: colors.textMuted, padding: 4 }}><Link2 size={14} /></button>
           <button type="button" onClick={e => { e.stopPropagation(); onPrint(); }} style={{ background: "none", border: "none", cursor: "pointer", color: colors.textMuted, padding: 4 }}><Printer size={14} /></button>
           <button type="button" onClick={e => { e.stopPropagation(); onDuplicate(); }} style={{ background: "none", border: "none", cursor: "pointer", color: colors.textMuted, padding: 4 }}><Copy size={14} /></button>
           <button type="button" onClick={e => { e.stopPropagation(); onDelete(); }} style={{ background: "none", border: "none", cursor: "pointer", color: colors.danger, padding: 4 }}><Trash2 size={14} /></button>
@@ -402,6 +437,7 @@ function SessionCard({ session, onOpen, onDuplicate, onDelete, onPrint }) {
 export default function GKCoachPlanner() {
   const [tab, setTab] = useState("library");
   const [sessions, setSessions] = useState(() => safeRead(STORAGE_KEYS.sessions, []));
+  const [calendarEntries, setCalendarEntries] = useState(() => safeRead(STORAGE_KEYS.calendar, {}));
   const [editingSession, setEditingSession] = useState(null);
   const [addingDrills, setAddingDrills] = useState(false);
   const [libSearch, setLibSearch] = useState("");
@@ -415,6 +451,16 @@ export default function GKCoachPlanner() {
   const [sessionSearch, setSessionSearch] = useState("");
   const [favoriteIds, setFavoriteIds] = useState(() => safeRead(STORAGE_KEYS.favorites, []));
   const [recentIds, setRecentIds] = useState(() => safeRead(STORAGE_KEYS.recent, []));
+  const [monthCursor, setMonthCursor] = useState(() => new Date());
+  const [selectedDateKey, setSelectedDateKey] = useState(() => new Date().toISOString().slice(0, 10));
+  const [shareNotice, setShareNotice] = useState("");
+  const [syncStatus, setSyncStatus] = useState(isSupabaseConfigured ? "Not signed in" : "Local-only mode");
+  const [syncError, setSyncError] = useState("");
+  const [authUser, setAuthUser] = useState(null);
+  const [authMode, setAuthMode] = useState("signin");
+  const [authForm, setAuthForm] = useState({ email: "", password: "" });
+  const [authBusy, setAuthBusy] = useState(false);
+  const [syncQueued, setSyncQueued] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -424,15 +470,46 @@ export default function GKCoachPlanner() {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(STORAGE_KEYS.favorites, JSON.stringify(favoriteIds));
+      window.localStorage.setItem(STORAGE_KEYS.calendar, JSON.stringify(calendarEntries));
     }
-  }, [favoriteIds]);
+  }, [calendarEntries]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
+      window.localStorage.setItem(STORAGE_KEYS.favorites, JSON.stringify(favoriteIds));
       window.localStorage.setItem(STORAGE_KEYS.recent, JSON.stringify(recentIds));
     }
-  }, [recentIds]);
+  }, [favoriteIds, recentIds]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const encoded = params.get("share");
+    if (!encoded) return;
+    const sharedSession = decodeSessionShare(encoded);
+    if (!sharedSession) return;
+    const imported = { ...sharedSession, id: uid(), name: `${sharedSession.name} (Imported)`, logs: sharedSession.logs || [], drills: (sharedSession.drills || []).map(drill => ({ ...drill, _uid: uid() })) };
+    setSessions(prev => prev.some(session => session.name === imported.name) ? prev : [...prev, imported]);
+    setShareNotice(`Imported shared session: ${imported.name}`);
+  }, []);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) return undefined;
+    let active = true;
+    supabase.auth.getSession().then(({ data }) => {
+      if (!active) return;
+      setAuthUser(data.session?.user ?? null);
+      setSyncStatus(data.session?.user ? "Signed in" : "Not signed in");
+    });
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAuthUser(session?.user ?? null);
+      setSyncStatus(session?.user ? "Signed in" : "Not signed in");
+    });
+    return () => {
+      active = false;
+      listener.subscription.unsubscribe();
+    };
+  }, []);
 
   const filteredDrills = useMemo(() => {
     return DRILL_LIBRARY.filter(d => {
@@ -453,11 +530,106 @@ export default function GKCoachPlanner() {
     return counts;
   }, []);
 
+  const recentDrills = recentIds.map(getDrillById).filter(Boolean);
+  const totalDrills = DRILL_LIBRARY.length;
+  const editing = sessions.find(s => s.id === editingSession);
+  const monthGrid = getMonthGrid(monthCursor);
+
+  const queueSync = () => {
+    if (authUser && isSupabaseConfigured) setSyncQueued(true);
+  };
+
+  const pullCloudSnapshot = async (userId = authUser?.id) => {
+    if (!supabase || !userId) return;
+    setSyncError("");
+    setSyncStatus("Loading cloud data...");
+    const { data, error } = await supabase.from("planner_snapshots").select("sessions, calendar_entries, favorites, recent").eq("user_id", userId).maybeSingle();
+    if (error) {
+      setSyncStatus("Cloud load failed");
+      setSyncError(error.message);
+      return;
+    }
+    if (data) {
+      setSessions(Array.isArray(data.sessions) ? data.sessions : []);
+      setCalendarEntries(data.calendar_entries || {});
+      setFavoriteIds(Array.isArray(data.favorites) ? data.favorites : []);
+      setRecentIds(Array.isArray(data.recent) ? data.recent : []);
+    }
+    setSyncStatus("Cloud data loaded");
+  };
+
+  const pushCloudSnapshot = async () => {
+    if (!supabase || !authUser) return;
+    setSyncError("");
+    setSyncStatus("Syncing to cloud...");
+    const payload = {
+      user_id: authUser.id,
+      sessions,
+      calendar_entries: calendarEntries,
+      favorites: favoriteIds,
+      recent: recentIds,
+      updated_at: new Date().toISOString(),
+    };
+    const { error } = await supabase.from("planner_snapshots").upsert(payload, { onConflict: "user_id" });
+    if (error) {
+      setSyncStatus("Cloud sync failed");
+      setSyncError(error.message);
+      return;
+    }
+    setSyncStatus("Cloud synced");
+  };
+
+  useEffect(() => {
+    if (!syncQueued || !authUser || !isSupabaseConfigured) return;
+    const timeout = setTimeout(() => {
+      pushCloudSnapshot();
+      setSyncQueued(false);
+    }, 800);
+    return () => clearTimeout(timeout);
+  }, [syncQueued, authUser, sessions, calendarEntries, favoriteIds, recentIds]);
+
+  useEffect(() => {
+    if (authUser && isSupabaseConfigured) {
+      pullCloudSnapshot(authUser.id);
+    }
+  }, [authUser?.id]);
+
+  const handleAuthSubmit = async () => {
+    if (!supabase) return;
+    setAuthBusy(true);
+    setSyncError("");
+    try {
+      if (authMode === "signin") {
+        const { error } = await supabase.auth.signInWithPassword(authForm);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.auth.signUp(authForm);
+        if (error) throw error;
+        setSyncStatus("Check your email to confirm sign-up");
+      }
+    } catch (error) {
+      setSyncError(error.message);
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    if (!supabase) return;
+    await supabase.auth.signOut();
+  };
+
+  const toggleFavorite = (id) => {
+    setFavoriteIds(prev => prev.includes(id) ? prev.filter(item => item !== id) : [id, ...prev]);
+    queueSync();
+  };
+
   const addDrillToSession = (drill) => {
     if (!editingSession) return;
     const updated = sessions.map(s => s.id === editingSession ? { ...s, drills: [...s.drills, { ...drill, _uid: uid() }] } : s);
     setSessions(updated);
     setRecentIds(prev => [drill.id, ...prev.filter(id => id !== drill.id)].slice(0, 8));
+    queueSync();
   };
 
   const createSession = () => {
@@ -465,6 +637,7 @@ export default function GKCoachPlanner() {
     setSessions([...sessions, s]);
     setEditingSession(s.id);
     setTab("sessions");
+    queueSync();
   };
 
   const createFromTemplate = (template) => {
@@ -472,21 +645,43 @@ export default function GKCoachPlanner() {
     setSessions([...sessions, session]);
     setEditingSession(session.id);
     setTab("sessions");
+    queueSync();
   };
 
   const duplicateSession = (s) => {
     const ns = { ...JSON.parse(JSON.stringify(s)), id: uid(), name: s.name + " (Copy)" };
     setSessions([...sessions, ns]);
+    queueSync();
   };
 
-  const updateSession = (u) => setSessions(sessions.map(s => s.id === u.id ? u : s));
-  const deleteSession = (id) => { setSessions(sessions.filter(s => s.id !== id)); if (editingSession === id) setEditingSession(null); };
+  const updateSession = (updatedSession) => {
+    setSessions(sessions.map(session => session.id === updatedSession.id ? updatedSession : session));
+    queueSync();
+  };
 
-  const editing = sessions.find(s => s.id === editingSession);
-  const totalDrills = DRILL_LIBRARY.length;
-  const recentDrills = recentIds.map(getDrillById).filter(Boolean);
-  const favoriteDrills = favoriteIds.map(getDrillById).filter(Boolean);
-  const toggleFavorite = (id) => setFavoriteIds(prev => prev.includes(id) ? prev.filter(item => item !== id) : [id, ...prev]);
+  const deleteSession = (id) => {
+    setSessions(sessions.filter(session => session.id !== id));
+    setCalendarEntries(Object.fromEntries(Object.entries(calendarEntries).filter(([, value]) => value !== id)));
+    if (editingSession === id) setEditingSession(null);
+    queueSync();
+  };
+
+  const handleShareSession = async (session) => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("share", encodeSessionShare(session));
+    try {
+      await navigator.clipboard.writeText(url.toString());
+      setShareNotice("Share link copied to clipboard");
+    } catch {
+      setShareNotice(url.toString());
+    }
+  };
+
+  const assignSessionToDate = (dateKey, sessionId) => {
+    setCalendarEntries(prev => ({ ...prev, [dateKey]: sessionId || null }));
+    queueSync();
+  };
 
   const DrillPicker = () => (
     <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", justifyContent: "center", alignItems: "center" }}>
@@ -526,10 +721,14 @@ export default function GKCoachPlanner() {
             <div style={{ width: 36, height: 36, background: colors.accent, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}><Shield size={20} color="#fff" /></div>
             <div>
               <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, letterSpacing: -0.5 }}>GK Coach Planner</h1>
-              <p style={{ margin: 0, fontSize: 11, color: colors.textMuted }}>{totalDrills} drills across {CATEGORIES.length} categories — build your own sessions</p>
+              <p style={{ margin: 0, fontSize: 11, color: colors.textMuted }}>{totalDrills} drills across {CATEGORIES.length} categories — build, schedule, and share sessions</p>
             </div>
           </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <Badge color={isSupabaseConfigured ? colors.accentLight : colors.warmLight} textColor={isSupabaseConfigured ? colors.accent : "#92400e"}>
+              {isSupabaseConfigured ? <Cloud size={12} style={{ marginRight: 4 }} /> : <CloudOff size={12} style={{ marginRight: 4 }} />}
+              {syncStatus}
+            </Badge>
             <Button onClick={createSession} size="sm"><Plus size={14} /> New Session</Button>
             <Button onClick={() => createFromTemplate(SESSION_TEMPLATES[0])} variant="secondary" size="sm"><Sparkles size={14} /> Quick Template</Button>
           </div>
@@ -537,98 +736,194 @@ export default function GKCoachPlanner() {
       </div>
 
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "16px 24px" }}>
-        <div style={{ display: "flex", borderBottom: "2px solid " + colors.border, marginBottom: 20, gap: 0 }}>
-          {[{ key: "library", label: `Drill Library`, icon: <BookOpen size={16} /> }, { key: "sessions", label: `My Sessions (${sessions.length})`, icon: <Target size={16} /> }].map(t =>
-            <button key={t.key} type="button" onClick={() => { setTab(t.key); if (t.key === "library") setEditingSession(null); }} style={{ padding: "10px 18px", background: "none", border: "none", borderBottom: tab === t.key ? "2px solid " + colors.accent : "2px solid transparent", color: tab === t.key ? colors.accent : colors.textMuted, fontWeight: tab === t.key ? 700 : 500, cursor: "pointer", fontSize: 14, marginBottom: -2, display: "flex", alignItems: "center", gap: 6 }}>{t.icon}{t.label}</button>
-          )}
-        </div>
+        {(shareNotice || syncError) && (
+          <div style={{ marginBottom: 14, padding: 12, borderRadius: 8, background: shareNotice ? colors.successLight : colors.dangerLight, color: shareNotice ? colors.success : colors.danger }}>
+            {shareNotice || syncError}
+          </div>
+        )}
 
-        {tab === "library" && (
-          <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
-            <div style={{ width: 220, flexShrink: 0 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: colors.textMuted, marginBottom: 10, letterSpacing: 0.5 }}>Categories</div>
-              <button type="button" onClick={() => setLibCat(null)} style={{ width: "100%", textAlign: "left", padding: "8px 12px", border: "none", background: !libCat ? colors.accentLight : "transparent", color: !libCat ? colors.accent : colors.text, cursor: "pointer", fontSize: 13, fontWeight: !libCat ? 700 : 500, borderRadius: 6, marginBottom: 2 }}>All Drills ({totalDrills})</button>
-              <button type="button" onClick={() => { setShowFavoritesOnly(!showFavoritesOnly); if (!showFavoritesOnly) setShowRecentOnly(false); }} style={{ width: "100%", textAlign: "left", padding: "8px 12px", border: "none", background: showFavoritesOnly ? colors.dangerLight : "transparent", color: showFavoritesOnly ? colors.danger : colors.text, cursor: "pointer", fontSize: 13, fontWeight: showFavoritesOnly ? 700 : 500, borderRadius: 6, marginBottom: 2 }}>Favorites ({favoriteIds.length})</button>
-              <button type="button" onClick={() => { setShowRecentOnly(!showRecentOnly); if (!showRecentOnly) setShowFavoritesOnly(false); }} style={{ width: "100%", textAlign: "left", padding: "8px 12px", border: "none", background: showRecentOnly ? colors.warmLight : "transparent", color: showRecentOnly ? "#92400e" : colors.text, cursor: "pointer", fontSize: 13, fontWeight: showRecentOnly ? 700 : 500, borderRadius: 6, marginBottom: 2 }}>Recently Used ({recentIds.length})</button>
-              {CATEGORIES.map(c => (
-                <button key={c.key} type="button" onClick={() => setLibCat(c.key)} style={{ width: "100%", textAlign: "left", padding: "8px 12px", border: "none", background: libCat === c.key ? c.bg : "transparent", color: libCat === c.key ? c.color : colors.text, cursor: "pointer", fontSize: 13, fontWeight: libCat === c.key ? 700 : 500, borderRadius: 6, marginBottom: 2, display: "flex", alignItems: "center", gap: 8 }}>
-                  <span>{c.icon}</span>
-                  <span style={{ flex: 1 }}>{c.label}</span>
-                  <span style={{ fontSize: 11, color: libCat === c.key ? c.color : colors.textMuted }}>{catCounts[c.key] || 0}</span>
-                </button>
-              ))}
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 320px", gap: 16, alignItems: "start" }}>
+          <div>
+            <div style={{ display: "flex", borderBottom: "2px solid " + colors.border, marginBottom: 20, gap: 0, overflowX: "auto" }}>
+              {[{ key: "library", label: `Drill Library`, icon: <BookOpen size={16} /> }, { key: "sessions", label: `My Sessions (${sessions.length})`, icon: <Target size={16} /> }, { key: "calendar", label: "Calendar", icon: <CalendarDays size={16} /> }].map(t =>
+                <button key={t.key} type="button" onClick={() => { setTab(t.key); if (t.key === "library") setEditingSession(null); }} style={{ padding: "10px 18px", background: "none", border: "none", borderBottom: tab === t.key ? "2px solid " + colors.accent : "2px solid transparent", color: tab === t.key ? colors.accent : colors.textMuted, fontWeight: tab === t.key ? 700 : 500, cursor: "pointer", fontSize: 14, marginBottom: -2, display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>{t.icon}{t.label}</button>
+              )}
             </div>
 
-            <div style={{ flex: 1, minWidth: 320 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, marginBottom: 16 }}>
-                {SESSION_TEMPLATES.map(template => (
-                  <div key={template.id} style={{ background: "#fff", border: "1px solid " + colors.border, borderRadius: 10, padding: 14 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}><Sparkles size={14} color={colors.accent} /><strong style={{ fontSize: 14 }}>{template.name}</strong></div>
-                    <div style={{ fontSize: 12, color: colors.textMuted, marginBottom: 10 }}>{template.drillIds.length} ready-made drills</div>
-                    <Button onClick={() => createFromTemplate(template)} variant="secondary" size="sm">Use Template</Button>
-                  </div>
-                ))}
-              </div>
+            {tab === "library" && (
+              <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+                <div style={{ width: 220, flexShrink: 0 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: colors.textMuted, marginBottom: 10, letterSpacing: 0.5 }}>Categories</div>
+                  <button type="button" onClick={() => setLibCat(null)} style={{ width: "100%", textAlign: "left", padding: "8px 12px", border: "none", background: !libCat ? colors.accentLight : "transparent", color: !libCat ? colors.accent : colors.text, cursor: "pointer", fontSize: 13, fontWeight: !libCat ? 700 : 500, borderRadius: 6, marginBottom: 2 }}>All Drills ({totalDrills})</button>
+                  <button type="button" onClick={() => { setShowFavoritesOnly(!showFavoritesOnly); if (!showFavoritesOnly) setShowRecentOnly(false); }} style={{ width: "100%", textAlign: "left", padding: "8px 12px", border: "none", background: showFavoritesOnly ? colors.dangerLight : "transparent", color: showFavoritesOnly ? colors.danger : colors.text, cursor: "pointer", fontSize: 13, fontWeight: showFavoritesOnly ? 700 : 500, borderRadius: 6, marginBottom: 2 }}>Favorites ({favoriteIds.length})</button>
+                  <button type="button" onClick={() => { setShowRecentOnly(!showRecentOnly); if (!showRecentOnly) setShowFavoritesOnly(false); }} style={{ width: "100%", textAlign: "left", padding: "8px 12px", border: "none", background: showRecentOnly ? colors.warmLight : "transparent", color: showRecentOnly ? "#92400e" : colors.text, cursor: "pointer", fontSize: 13, fontWeight: showRecentOnly ? 700 : 500, borderRadius: 6, marginBottom: 2 }}>Recently Used ({recentIds.length})</button>
+                  {CATEGORIES.map(c => (
+                    <button key={c.key} type="button" onClick={() => setLibCat(c.key)} style={{ width: "100%", textAlign: "left", padding: "8px 12px", border: "none", background: libCat === c.key ? c.bg : "transparent", color: libCat === c.key ? c.color : colors.text, cursor: "pointer", fontSize: 13, fontWeight: libCat === c.key ? 700 : 500, borderRadius: 6, marginBottom: 2, display: "flex", alignItems: "center", gap: 8 }}>
+                      <span>{c.icon}</span>
+                      <span style={{ flex: 1 }}>{c.label}</span>
+                      <span style={{ fontSize: 11, color: libCat === c.key ? c.color : colors.textMuted }}>{catCounts[c.key] || 0}</span>
+                    </button>
+                  ))}
+                </div>
 
-              {recentDrills.length > 0 && !showFavoritesOnly && !showRecentOnly && !libSearch && !libCat && (
-                <div style={{ marginBottom: 18 }}>
-                  <h3 style={{ margin: "0 0 10px", fontSize: 15 }}>Recent Drills</h3>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 8 }}>
-                    {recentDrills.slice(0, 3).map(drill => <DrillCard key={drill.id} drill={drill} onAdd={editingSession ? addDrillToSession : null} expanded={expandedDrill === `recent-${drill.id}`} onToggle={() => setExpandedDrill(expandedDrill === `recent-${drill.id}` ? null : `recent-${drill.id}`)} isFavorite={favoriteIds.includes(drill.id)} onToggleFavorite={toggleFavorite} recentRank={recentIds.indexOf(drill.id) + 1} />)}
+                <div style={{ flex: 1, minWidth: 320 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, marginBottom: 16 }}>
+                    {SESSION_TEMPLATES.map(template => (
+                      <div key={template.id} style={{ background: "#fff", border: "1px solid " + colors.border, borderRadius: 10, padding: 14 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}><Sparkles size={14} color={colors.accent} /><strong style={{ fontSize: 14 }}>{template.name}</strong></div>
+                        <div style={{ fontSize: 12, color: colors.textMuted, marginBottom: 10 }}>{template.drillIds.length} ready-made drills</div>
+                        <Button onClick={() => createFromTemplate(template)} variant="secondary" size="sm">Use Template</Button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {recentDrills.length > 0 && !showFavoritesOnly && !showRecentOnly && !libSearch && !libCat && (
+                    <div style={{ marginBottom: 18 }}>
+                      <h3 style={{ margin: "0 0 10px", fontSize: 15 }}>Recent Drills</h3>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 8 }}>
+                        {recentDrills.slice(0, 3).map(drill => <DrillCard key={drill.id} drill={drill} onAdd={editingSession ? addDrillToSession : null} expanded={expandedDrill === `recent-${drill.id}`} onToggle={() => setExpandedDrill(expandedDrill === `recent-${drill.id}` ? null : `recent-${drill.id}`)} isFavorite={favoriteIds.includes(drill.id)} onToggleFavorite={toggleFavorite} recentRank={recentIds.indexOf(drill.id) + 1} />)}
+                      </div>
+                    </div>
+                  )}
+
+                  {libCat && <div style={{ marginBottom: 14 }}><h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>{CATEGORIES.find(c => c.key === libCat)?.icon} {CATEGORIES.find(c => c.key === libCat)?.label}</h2><p style={{ margin: "4px 0 0", fontSize: 13, color: colors.textMuted }}>{CATEGORIES.find(c => c.key === libCat)?.desc}</p></div>}
+                  <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+                    <input value={libSearch} onChange={e => setLibSearch(e.target.value)} placeholder="Search drills by name, description, coaching points..." style={{ flex: 1, padding: "7px 12px", border: "1px solid " + colors.border, borderRadius: 6, fontSize: 13 }} />
+                    <select value={libInt} onChange={e => setLibInt(e.target.value)} style={{ padding: "7px 12px", border: "1px solid " + colors.border, borderRadius: 6, fontSize: 13 }}>
+                      <option value="All">All Intensities</option>
+                      {INTENSITY.map(i => <option key={i} value={i}>{i}</option>)}
+                    </select>
+                    <select value={libEquipment} onChange={e => setLibEquipment(e.target.value)} style={{ padding: "7px 12px", border: "1px solid " + colors.border, borderRadius: 6, fontSize: 13 }}>
+                      <option value="All">All Equipment</option>
+                      {[...new Set(DRILL_LIBRARY.flatMap(drill => drill.eq || []))].sort().map(item => <option key={item} value={item}>{item}</option>)}
+                    </select>
+                    <select value={libDuration} onChange={e => setLibDuration(e.target.value)} style={{ padding: "7px 12px", border: "1px solid " + colors.border, borderRadius: 6, fontSize: 13 }}>
+                      <option value="All">Any Length</option>
+                      <option value="<=10">Up to 10 min</option>
+                      <option value="11-15">11-15 min</option>
+                      <option value="16+">16+ min</option>
+                    </select>
+                  </div>
+                  <div style={{ fontSize: 12, color: colors.textMuted, marginBottom: 10 }}>{filteredDrills.length} drills found</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {filteredDrills.map(d => <DrillCard key={d.id} drill={d} onAdd={editingSession ? addDrillToSession : null} expanded={expandedDrill === d.id} onToggle={() => setExpandedDrill(expandedDrill === d.id ? null : d.id)} isFavorite={favoriteIds.includes(d.id)} onToggleFavorite={toggleFavorite} recentRank={recentIds.indexOf(d.id) >= 0 ? recentIds.indexOf(d.id) + 1 : null} />)}
                   </div>
                 </div>
-              )}
-
-              {libCat && <div style={{ marginBottom: 14 }}><h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>{CATEGORIES.find(c => c.key === libCat)?.icon} {CATEGORIES.find(c => c.key === libCat)?.label}</h2><p style={{ margin: "4px 0 0", fontSize: 13, color: colors.textMuted }}>{CATEGORIES.find(c => c.key === libCat)?.desc}</p></div>}
-              <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
-                <input value={libSearch} onChange={e => setLibSearch(e.target.value)} placeholder="Search drills by name, description, coaching points..." style={{ flex: 1, padding: "7px 12px", border: "1px solid " + colors.border, borderRadius: 6, fontSize: 13 }} />
-                <select value={libInt} onChange={e => setLibInt(e.target.value)} style={{ padding: "7px 12px", border: "1px solid " + colors.border, borderRadius: 6, fontSize: 13 }}>
-                  <option value="All">All Intensities</option>
-                  {INTENSITY.map(i => <option key={i} value={i}>{i}</option>)}
-                </select>
-                <select value={libEquipment} onChange={e => setLibEquipment(e.target.value)} style={{ padding: "7px 12px", border: "1px solid " + colors.border, borderRadius: 6, fontSize: 13 }}>
-                  <option value="All">All Equipment</option>
-                  {[...new Set(DRILL_LIBRARY.flatMap(drill => drill.eq || []))].sort().map(item => <option key={item} value={item}>{item}</option>)}
-                </select>
-                <select value={libDuration} onChange={e => setLibDuration(e.target.value)} style={{ padding: "7px 12px", border: "1px solid " + colors.border, borderRadius: 6, fontSize: 13 }}>
-                  <option value="All">Any Length</option>
-                  <option value="<=10">Up to 10 min</option>
-                  <option value="11-15">11-15 min</option>
-                  <option value="16+">16+ min</option>
-                </select>
-              </div>
-              <div style={{ fontSize: 12, color: colors.textMuted, marginBottom: 10 }}>{filteredDrills.length} drills found</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {filteredDrills.map(d => <DrillCard key={d.id} drill={d} onAdd={editingSession ? addDrillToSession : null} expanded={expandedDrill === d.id} onToggle={() => setExpandedDrill(expandedDrill === d.id ? null : d.id)} isFavorite={favoriteIds.includes(d.id)} onToggleFavorite={toggleFavorite} recentRank={recentIds.indexOf(d.id) >= 0 ? recentIds.indexOf(d.id) + 1 : null} />)}
-              </div>
-              {filteredDrills.length === 0 && <div style={{ textAlign: "center", padding: 50, color: colors.textMuted }}><Search size={30} style={{ opacity: 0.3, marginBottom: 10 }} /><p>No drills match your search.</p></div>}
-            </div>
-          </div>
-        )}
-
-        {tab === "sessions" && !editing && (
-          <div>
-            <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
-              <input value={sessionSearch} onChange={e => setSessionSearch(e.target.value)} placeholder="Search sessions..." style={{ flex: 1, padding: "7px 12px", border: "1px solid " + colors.border, borderRadius: 6, fontSize: 13 }} />
-              <Button onClick={createSession}><Plus size={14} /> New Session</Button>
-            </div>
-            {sessions.length === 0 && (
-              <div style={{ textAlign: "center", padding: 60, color: colors.textMuted }}>
-                <Target size={40} style={{ opacity: 0.3, marginBottom: 12 }} />
-                <p style={{ fontSize: 15, marginBottom: 16 }}>No sessions yet. Build your first one!</p>
-                <p style={{ fontSize: 13, maxWidth: 400, margin: "0 auto" }}>Browse the Drill Library, pick drills across categories and intensities, and assemble custom sessions.</p>
-                <Button onClick={createSession} style={{ marginTop: 16 }}><Plus size={14} /> Create Session</Button>
               </div>
             )}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 12 }}>
-              {sessions.filter(s => !sessionSearch || s.name.toLowerCase().includes(sessionSearch.toLowerCase())).map(s => <SessionCard key={s.id} session={s} onOpen={() => setEditingSession(s.id)} onDuplicate={() => duplicateSession(s)} onDelete={() => deleteSession(s.id)} onPrint={() => printSession(s)} />)}
+
+            {tab === "sessions" && !editing && (
+              <div>
+                <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+                  <input value={sessionSearch} onChange={e => setSessionSearch(e.target.value)} placeholder="Search sessions..." style={{ flex: 1, padding: "7px 12px", border: "1px solid " + colors.border, borderRadius: 6, fontSize: 13 }} />
+                  <Button onClick={createSession}><Plus size={14} /> New Session</Button>
+                  {authUser && isSupabaseConfigured && <Button onClick={pushCloudSnapshot} variant="secondary"><RefreshCw size={14} /> Sync Now</Button>}
+                </div>
+                {sessions.length === 0 && (
+                  <div style={{ textAlign: "center", padding: 60, color: colors.textMuted }}>
+                    <Target size={40} style={{ opacity: 0.3, marginBottom: 12 }} />
+                    <p style={{ fontSize: 15, marginBottom: 16 }}>No sessions yet. Build your first one!</p>
+                    <p style={{ fontSize: 13, maxWidth: 400, margin: "0 auto" }}>Browse the Drill Library, pick drills across categories and intensities, and assemble custom sessions.</p>
+                    <Button onClick={createSession} style={{ marginTop: 16 }}><Plus size={14} /> Create Session</Button>
+                  </div>
+                )}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 12 }}>
+                  {sessions.filter(s => !sessionSearch || s.name.toLowerCase().includes(sessionSearch.toLowerCase())).map(s => <SessionCard key={s.id} session={s} onOpen={() => setEditingSession(s.id)} onDuplicate={() => duplicateSession(s)} onDelete={() => deleteSession(s.id)} onPrint={() => printSession(s)} onShare={() => handleShareSession(s)} />)}
+                </div>
+              </div>
+            )}
+
+            {tab === "sessions" && editing && (
+              <SessionBuilder session={editing} onUpdate={updateSession} onBack={() => setEditingSession(null)} onAddDrill={() => setAddingDrills(true)} onShare={handleShareSession} />
+            )}
+
+            {tab === "calendar" && (
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
+                  <div>
+                    <h2 style={{ margin: 0, fontSize: 18 }}>{monthCursor.toLocaleString(undefined, { month: "long", year: "numeric" })}</h2>
+                    <p style={{ margin: "4px 0 0", color: colors.textMuted, fontSize: 13 }}>Assign sessions to dates and plan your week visually.</p>
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <Button variant="secondary" size="sm" onClick={() => setMonthCursor(new Date(monthCursor.getFullYear(), monthCursor.getMonth() - 1, 1))}>Prev</Button>
+                    <Button variant="secondary" size="sm" onClick={() => setMonthCursor(new Date())}>Today</Button>
+                    <Button variant="secondary" size="sm" onClick={() => setMonthCursor(new Date(monthCursor.getFullYear(), monthCursor.getMonth() + 1, 1))}>Next</Button>
+                  </div>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 8, marginBottom: 8 }}>
+                  {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(day => <div key={day} style={{ fontSize: 12, fontWeight: 700, color: colors.textMuted }}>{day}</div>)}
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 8 }}>
+                  {monthGrid.map((date, index) => {
+                    const key = date ? formatDateKey(date) : `empty-${index}`;
+                    const assigned = date ? sessions.find(session => session.id === calendarEntries[key]) : null;
+                    return (
+                      <div key={key} onClick={() => date && setSelectedDateKey(key)} style={{ minHeight: 130, background: "#fff", border: selectedDateKey === key ? "2px solid " + colors.accent : "1px solid " + colors.border, borderRadius: 10, padding: 10, opacity: date ? 1 : 0.4 }}>
+                        {date ? (
+                          <>
+                            <div style={{ fontWeight: 700, marginBottom: 8 }}>{date.getDate()}</div>
+                            <select value={calendarEntries[key] || ""} onChange={event => assignSessionToDate(key, event.target.value)} style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: "1px solid " + colors.border, fontSize: 12 }}>
+                              <option value="">No session</option>
+                              {sessions.map(session => <option key={session.id} value={session.id}>{session.name}</option>)}
+                            </select>
+                            {assigned && (
+                              <div style={{ marginTop: 8, fontSize: 12, color: colors.textMuted }}>
+                                <strong>{assigned.name}</strong>
+                                <div>{assigned.drills.length} drills</div>
+                              </div>
+                            )}
+                          </>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div style={{ background: "#fff", border: "1px solid " + colors.border, borderRadius: 12, padding: 16, position: "sticky", top: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              <User size={16} />
+              <h3 style={{ margin: 0, fontSize: 15 }}>Account & Sync</h3>
+            </div>
+            {!isSupabaseConfigured && (
+              <div style={{ fontSize: 13, color: colors.textMuted, lineHeight: 1.6 }}>
+                Cloud sync is ready in the app, but it needs Supabase keys before sign-in can work.
+                Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`, then create the SQL table from the schema file.
+              </div>
+            )}
+            {isSupabaseConfigured && !authUser && (
+              <>
+                <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+                  <Button variant={authMode === "signin" ? "primary" : "secondary"} size="sm" onClick={() => setAuthMode("signin")}>Sign In</Button>
+                  <Button variant={authMode === "signup" ? "primary" : "secondary"} size="sm" onClick={() => setAuthMode("signup")}>Create Account</Button>
+                </div>
+                <Input label="Email" value={authForm.email} onChange={value => setAuthForm({ ...authForm, email: value })} placeholder="coach@example.com" />
+                <Input label="Password" type="password" value={authForm.password} onChange={value => setAuthForm({ ...authForm, password: value })} placeholder="At least 6 characters" />
+                <Button onClick={handleAuthSubmit} disabled={authBusy} style={{ width: "100%" }}>{authBusy ? <RefreshCw size={14} /> : <LogIn size={14} />}{authMode === "signin" ? "Sign In" : "Create Account"}</Button>
+              </>
+            )}
+            {authUser && (
+              <>
+                <div style={{ fontSize: 13, marginBottom: 10 }}><strong>{authUser.email}</strong></div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+                  <Button variant="secondary" size="sm" onClick={pushCloudSnapshot}><Cloud size={14} /> Push</Button>
+                  <Button variant="secondary" size="sm" onClick={() => pullCloudSnapshot()}><RefreshCw size={14} /> Pull</Button>
+                  <Button variant="ghost" size="sm" onClick={handleSignOut}><LogOut size={14} /> Sign Out</Button>
+                </div>
+              </>
+            )}
+            <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid " + colors.border }}>
+              <h4 style={{ margin: "0 0 10px", fontSize: 14 }}>Selected Day</h4>
+              <div style={{ fontSize: 13, color: colors.textMuted, marginBottom: 8 }}>{selectedDateKey}</div>
+              <select value={calendarEntries[selectedDateKey] || ""} onChange={event => assignSessionToDate(selectedDateKey, event.target.value)} style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid " + colors.border, fontSize: 13 }}>
+                <option value="">No session</option>
+                {sessions.map(session => <option key={session.id} value={session.id}>{session.name}</option>)}
+              </select>
             </div>
           </div>
-        )}
-
-        {tab === "sessions" && editing && (
-          <SessionBuilder session={editing} onUpdate={updateSession} onBack={() => setEditingSession(null)} onAddDrill={() => setAddingDrills(true)} />
-        )}
+        </div>
       </div>
     </div>
   );
