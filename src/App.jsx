@@ -1,642 +1,250 @@
-import { useMemo, useState } from "react";
-import {
-  ArrowLeft,
-  Calendar,
-  CheckCircle2,
-  ChevronDown,
-  ChevronRight,
-  Clock,
-  Copy,
-  Edit3,
-  Layers,
-  Plus,
-  Shield,
-  Target,
-  Trash2,
-  X,
-} from "lucide-react";
+import { useState, useMemo } from "react";
+import { Plus, Trash2, Edit3, Copy, ChevronDown, ChevronRight, Clock, Target, Shield, ArrowLeft, CheckCircle2, Calendar, Layers, X } from "lucide-react";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
 const SKILL_CATEGORIES = [
-  "Shot Stopping",
-  "Diving",
-  "Footwork",
-  "Positioning",
-  "Distribution",
-  "Crosses & High Balls",
-  "1v1 Situations",
-  "Communication",
-  "Playing Out From Back",
-  "Set Pieces",
-  "Recovery",
-  "Mental / Decision Making",
-  "Physical Conditioning",
+  "Shot Stopping", "Diving", "Footwork", "Positioning",
+  "Distribution", "Crosses & High Balls", "1v1 Situations",
+  "Communication", "Playing Out From Back", "Set Pieces",
+  "Recovery", "Mental / Decision Making", "Physical Conditioning"
 ];
-
 const INTENSITY = ["Low", "Medium", "High", "Max"];
-
 const EQUIPMENT_OPTIONS = [
-  "Cones",
-  "Poles",
-  "Hurdles",
-  "Mannequins",
-  "Balls",
-  "GK Gloves",
-  "Resistance Bands",
-  "Agility Ladder",
-  "Mini Goals",
-  "Rebounder",
-  "Tennis Balls",
-  "Medicine Ball",
-  "Speed Rings",
+  "Cones", "Poles", "Hurdles", "Mannequins", "Balls", "GK Gloves",
+  "Resistance Bands", "Agility Ladder", "Mini Goals", "Rebounder",
+  "Tennis Balls", "Medicine Ball", "Speed Rings"
 ];
-
-const DAYS = [
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-  "Sunday",
-];
+const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 const emptyDrill = () => ({
-  id: uid(),
-  name: "",
-  duration: 10,
-  description: "",
-  category: "Shot Stopping",
-  sets: "",
-  reps: "",
-  equipment: [],
-  coachingPoints: "",
-  intensity: "Medium",
-  playerCount: "",
-  progressions: "",
-  commonMistakes: "",
-  notes: "",
+  id: uid(), name: "", duration: 10, description: "", category: "Shot Stopping",
+  sets: "", reps: "", equipment: [], coachingPoints: "", intensity: "Medium",
+  playerCount: "", progressions: "", commonMistakes: "", notes: "",
 });
-
 const emptySession = () => ({
-  id: uid(),
-  name: "New Session",
-  focus: "Shot Stopping",
-  totalDuration: 60,
-  drills: [emptyDrill()],
-  week: "",
-  day: "",
-  phase: "",
-  weekFocus: "",
+  id: uid(), name: "New Session", focus: "Shot Stopping", totalDuration: 60,
+  drills: [emptyDrill()], week: "", day: "", phase: "", weekFocus: "",
 });
-
 const emptyWeek = () => ({
-  id: uid(),
-  name: "New Week",
-  days: DAYS.reduce((acc, day) => ({ ...acc, [day]: null }), {}),
+  id: uid(), name: "New Week",
+  days: DAYS.reduce((acc, d) => ({ ...acc, [d]: null }), {}),
 });
-
 const emptyBlock = () => ({
-  id: uid(),
-  name: "New Training Block",
-  weeks: [emptyWeek()],
-  goal: "",
+  id: uid(), name: "New Training Block", weeks: [emptyWeek()], goal: "",
 });
 
 // Parsed from GK_Full_Fall_Season_Training_Plan.docx
-const RAW = [{"name":"W1 Monday \u2014 Individual Assessment + Stance","focus":"Mental / Decision Making","week":1,"day":"Monday","phase":"Pre-Season","wf":"Assessment & Foundation","drills":[{"n":"Goalkeeper Profile Assessment","dur":10,"desc":"Each GK performs a standardized 10-minute test: set position, lateral shuffle 5m each way, basic low ball catch, dive left/right, kick from hands. Coach records baseline on clipboard.","cat":"Mental / Decision Making","reps":"10 min each GK","eq":["Balls"],"cp":"Observe natural tendencies; note dominant side, catching shape, footwork preference","int":"Medium"},{"n":"Set Position & Stance Drill","dur":6,"desc":"GKs stand on goal line. Coach calls 'set' — GKs drop into stance. Coach checks: feet shoulder-width, weight on balls of feet, hands up, eyes forward. Reset and repeat.","cat":"Positioning","reps":"3 x 10 reps","eq":["Balls"],"cp":"Soft knees, chin over toes, hands ready at hip height","int":"Medium"},{"n":"W-Grip Catching Form","dur":6,"desc":"Coach rolls/throws balls at varying heights from 8m. GKs focus only on hand shape — thumbs together behind ball on high catches, pinkies together on low. Balls 1 at a time, no pressure.","cat":"Shot Stopping","reps":"3 x 12 catches each","eq":["Balls"],"cp":"Lock the W shape — no chicken wings; ball into chest on completion","int":"Medium"},{"n":"Basic Footwork Ladder","dur":10,"desc":"Agility ladder flat on ground in front of goal. GKs work through: two-feet-in each rung, lateral shuffle, crossover step. Done barefoot or in boots.","cat":"Positioning","reps":"4 passes each pattern","eq":["Agility Ladder"],"cp":"Light on feet, don't stare down; head up throughout","int":"Medium"}]},{"name":"W1 Tuesday — Catching & Ground Balls","focus":"Shot Stopping","week":1,"day":"Tuesday","phase":"Pre-Season","wf":"Assessment & Foundation","drills":[{"n":"Roll-Out Ground Ball Circuit","dur":8,"desc":"Coach stands 10m out, rolls balls left, right, and central. GK must move to line of ball and take with proper scoop technique — fingers pointing down, ball into chest. Rotate all 3 GKs.","cat":"Distribution","reps":"4 x 8 balls each","eq":["Balls"],"cp":"Get body behind ball; don't just use hands","int":"Medium"},{"n":"Collapse Dive Introduction (Both Sides)","dur":6,"desc":"Start from knees. GK falls to side, keeping bottom leg extended, top hand over ball, bottom hand under. Coach places ball rather than throws. Progress to standing once technique is clean.","cat":"Shot Stopping","reps":"3 x 6 each side","eq":["Balls"],"cp":"Lead with the hand — not the shoulder; watch ball into hands","int":"Medium"},{"n":"Chest-Height Catching","dur":6,"desc":"Coach throws at chest height from 8m. GK takes ball into chest, wraps arms, steps into the throw. Ball is held secure for 2 seconds before release.","cat":"Shot Stopping","reps":"3 x 10 each GK","eq":["Balls"],"cp":"Meet the ball — don't wait for it; absorb with soft elbows","int":"Medium"},{"n":"Low-to-High Transition Catching","dur":6,"desc":"Coach alternates: first ball is ground-level (scoop), second ball is above waist (W-grip). GK must reset stance between each. Builds pattern recognition.","cat":"Shot Stopping","reps":"3 x 8 pairs each","eq":["Balls"],"cp":"Reset stance between balls — don't stay low","int":"Medium"}]},{"name":"W1 Thursday — Distribution Fundamentals","focus":"Distribution","week":1,"day":"Thursday","phase":"Pre-Season","wf":"Assessment & Foundation","drills":[{"n":"Underarm Roll to Targets","dur":6,"desc":"Place 4 cones at 10m, 15m, and 20m in front and wide. GK rolls ball underarm to each cone in sequence. Focus on accuracy, not pace. Both hands.","cat":"Distribution","reps":"3 x 10 each hand","eq":["Cones","Balls"],"cp":"Low release point; stay side-on to target; follow through to cone","int":"Low"},{"n":"Javelin/Overarm Throw","dur":6,"desc":"GK stands on 6-yard box edge. Target: a cone/player at 25m. Side-on stance, arm back, drive off back foot. No windup — direct throw.","cat":"Distribution","reps":"3 x 8 each arm","eq":["Cones"],"cp":"Elbow high, fingers behind ball; rotate hips through delivery","int":"Low"},{"n":"Goal Kick Technique (Instep)","dur":10,"desc":"Ball on tee at edge of 6-yard box. GK approaches at slight angle, plants non-kicking foot beside ball, strikes with laces, follow-through to target zone in midfield.","cat":"Distribution","reps":"10 kicks each GK","eq":["Balls"],"cp":"Lock ankle, lean slightly back; contact through center of ball","int":"Low"},{"n":"Distribution Decision Game","dur":6,"desc":"Coach stands in two zones: left channel and right channel at halfway. GK must roll, throw, or kick to whichever zone coach points to. Randomized calls.","cat":"Distribution","reps":"3 x 10 decisions each","eq":["Balls","GK Gloves"],"cp":"Choose fastest accurate method; eyes up before ball arrives","int":"Low"}]}];
+const RAW = [{"name":"W1 Monday \u2014 Individual Assessment + Stance","focus":"Mental / Decision Making","week":1,"day":"Monday","phase":"Pre-Season","wf":"Assessment & Foundation","drills":[{"n":"Goalkeeper Profile Assessment","dur":10,"desc":"Each GK performs a standardized 10-minute test: set position, lateral shuffle 5m each way, basic low ball catch, dive left/right, kick from hands. Coach records baseline on clipboard.","cat":"Mental / Decision Making","reps":"10 min each GK","eq":["Balls"],"cp":"Observe natural tendencies; note dominant side, catching shape, footwork preference","int":"Medium"},{"n":"Set Position & Stance Drill","dur":6,"desc":"GKs stand on goal line. Coach calls 'set' \u2014 GKs drop into stance. Coach checks: feet shoulder-width, weight on balls of feet, hands up, eyes forward. Reset and repeat.","cat":"Positioning","reps":"3 x 10 reps","eq":["Balls"],"cp":"Soft knees, chin over toes, hands ready at hip height","int":"Medium"},{"n":"W-Grip Catching Form","dur":6,"desc":"Coach rolls/throws balls at varying heights from 8m. GKs focus only on hand shape \u2014 thumbs together behind ball on high catches, pinkies together on low. Balls 1 at a time, no pressure.","cat":"Shot Stopping","reps":"3 x 12 catches each","eq":["Balls"],"cp":"Lock the W shape \u2014 no chicken wings; ball into chest on completion","int":"Medium"},{"n":"Basic Footwork Ladder","dur":10,"desc":"Agility ladder flat on ground in front of goal. GKs work through: two-feet-in each rung, lateral shuffle, crossover step. Done barefoot or in boots.","cat":"Positioning","reps":"4 passes each pattern","eq":["Agility Ladder"],"cp":"Light on feet, don't stare down; head up throughout","int":"Medium"}]},{"name":"W1 Tuesday \u2014 Catching & Ground Balls","focus":"Shot Stopping","week":1,"day":"Tuesday","phase":"Pre-Season","wf":"Assessment & Foundation","drills":[{"n":"Roll-Out Ground Ball Circuit","dur":8,"desc":"Coach stands 10m out, rolls balls left, right, and central. GK must move to line of ball and take with proper scoop technique \u2014 fingers pointing down, ball into chest. Rotate all 3 GKs.","cat":"Distribution","reps":"4 x 8 balls each","eq":["Balls"],"cp":"Get body behind ball; don't just use hands","int":"Medium"},{"n":"Collapse Dive Introduction (Both Sides)","dur":6,"desc":"Start from knees. GK falls to side, keeping bottom leg extended, top hand over ball, bottom hand under. Coach places ball rather than throws. Progress to standing once technique is clean.","cat":"Shot Stopping","reps":"3 x 6 each side","eq":["Balls"],"cp":"Lead with the hand \u2014 not the shoulder; watch ball into hands","int":"Medium"},{"n":"Chest-Height Catching","dur":6,"desc":"Coach throws at chest height from 8m. GK takes ball into chest, wraps arms, steps into the throw. Ball is held secure for 2 seconds before release.","cat":"Shot Stopping","reps":"3 x 10 each GK","eq":["Balls"],"cp":"Meet the ball \u2014 don't wait for it; absorb with soft elbows","int":"Medium"},{"n":"Low-to-High Transition Catching","dur":6,"desc":"Coach alternates: first ball is ground-level (scoop), second ball is above waist (W-grip). GK must reset stance between each. Builds pattern recognition.","cat":"Shot Stopping","reps":"3 x 8 pairs each","eq":["Balls"],"cp":"Reset stance between balls \u2014 don't stay low","int":"Medium"}]},{"name":"W1 Thursday \u2014 Distribution Fundamentals","focus":"Distribution","week":1,"day":"Thursday","phase":"Pre-Season","wf":"Assessment & Foundation","drills":[{"n":"Underarm Roll to Targets","dur":6,"desc":"Place 4 cones at 10m, 15m, and 20m in front and wide. GK rolls ball underarm to each cone in sequence. Focus on accuracy, not pace. Both hands.","cat":"Distribution","reps":"3 x 10 each hand","eq":["Cones","Balls"],"cp":"Low release point; stay side-on to target; follow through to cone","int":"Low"},{"n":"Javelin/Overarm Throw","dur":6,"desc":"GK stands on 6-yard box edge. Target: a cone/player at 25m. Side-on stance, arm back, drive off back foot. No windup \u2014 direct throw.","cat":"Distribution","reps":"3 x 8 each arm","eq":["Cones"],"cp":"Elbow high, fingers behind ball; rotate hips through delivery","int":"Low"},{"n":"Goal Kick Technique (Instep)","dur":10,"desc":"Ball on tee at edge of 6-yard box. GK approaches at slight angle, plants non-kicking foot beside ball, strikes with laces, follow-through to target zone in midfield.","cat":"Distribution","reps":"10 kicks each GK","eq":["Balls"],"cp":"Lock ankle, lean slightly back; contact through center of ball","int":"Low"},{"n":"Distribution Decision Game","dur":6,"desc":"Coach stands in two zones: left channel and right channel at halfway. GK must roll, throw, or kick to whichever zone coach points to. Randomized calls.","cat":"Distribution","reps":"3 x 10 decisions each","eq":["Balls","GK Gloves"],"cp":"Choose fastest accurate method; eyes up before ball arrives","int":"Low"}]},{"name":"W1 Friday \u2014 Positioning & Angles","focus":"Positioning","week":1,"day":"Friday","phase":"Pre-Season","wf":"Assessment & Foundation","drills":[{"n":"Angle-Setting with Cones","dur":6,"desc":"Place cones marking the optimum GK position for balls at 5 different positions: center of box, left of box, right, wide left, wide right. GK must sprint to correct cone and set before coach shoots.","cat":"Positioning","reps":"3 x 10 positions","eq":["Cones","Balls"],"cp":"Bisect the angle \u2014 not too close, not too deep; arrive set before ball is struck","int":"Medium"},{"n":"Near-Post Blocking","dur":8,"desc":"Coach wide right/left at edge of box. GK must get near post, stay on feet, make body big. Coach delivers low driven shot. GK saves and recovers.","cat":"Positioning","reps":"4 x 6 shots each side","eq":["Balls","GK Gloves"],"cp":"Shoulder on post, then step out one step; do not go to ground early","int":"Medium"},{"n":"1v1 From 18-Yard Line (Feet Set)","dur":6,"desc":"Coach walks ball toward goal from 18-yard line. GK advances to set position at top of 6-yard box, narrows angle, stays set. No diving \u2014 force play wide.","cat":"1v1 Situations","reps":"3 x 6 each GK","eq":["Balls"],"cp":"Big body, stay on feet; wait \u2014 don't commit too early","int":"Medium"},{"n":"Post-to-Post Movement","dur":8,"desc":"GK starts on right post. Coach calls 'go' \u2014 GK shuffles across to left post and sets. Coach shoots immediately. Focus on speed of movement and quality of set.","cat":"Positioning","reps":"4 x 8 repetitions","eq":["Balls","GK Gloves"],"cp":"Stay on toes; arrive set, not still moving","int":"Medium"}]},{"name":"W2 Monday \u2014 Low Saves & Footwork Combos","focus":"Shot Stopping","week":2,"day":"Monday","phase":"Pre-Season","wf":"Shot-Stopping Mechanics","drills":[{"n":"Shuffle + Low Drive Save","dur":8,"desc":"Cones 3m apart, 10m from goal. GK shuffles laterally between cones, coach fires low drive immediately after GK touches cone. Alternating sides.","cat":"Positioning","reps":"4 x 8 shots each","eq":["Cones"],"cp":"Don't dive until necessary; block with body, not just hands","int":"Medium"},{"n":"Reverse Cross-Step + Collapse Dive","dur":6,"desc":"GK takes 2 crossover steps to the right, then collapses left. Coach delivers ball to opposite side 0.5 seconds after movement starts. Builds recovery pattern.","cat":"Crosses & High Balls","reps":"3 x 8 each direction","eq":["Balls"],"cp":"Head still on dive; bottom hand first, top hand over ball","int":"Medium"},{"n":"Rebounder Rapid-Fire Ground Balls","dur":10,"desc":"Coach fires ball at rebounder 3m from GK. GK saves rebound. Repeat immediately \u2014 5 balls in sequence with no rest between. Simulate scramble saves.","cat":"Shot Stopping","reps":"5 x 5-ball sets","eq":["Rebounder","Balls"],"cp":"Get up fast; don't stay on ground \u2014 second ball is coming","int":"High"},{"n":"Angle Footwork + Driven Shot","dur":6,"desc":"GK starts behind 6-yard box line. Coach rolls ball to edge of area \u2014 GK sprints out, sets angle, coach shoots from behind GK (pass to second coach). GK must get back and save.","cat":"Positioning","reps":"3 x 6 each","eq":["Balls"],"cp":"Sprint to line of ball, then set \u2014 no rushing the dive","int":"Medium"}]},{"name":"W2 Tuesday \u2014 Extension Dives & Full Stretch","focus":"Recovery","week":2,"day":"Tuesday","phase":"Pre-Season","wf":"Shot-Stopping Mechanics","drills":[{"n":"Diving Header Ball Introduction","dur":8,"desc":"Coach stands 6m away, throws ball to GK's side just out of comfortable reach. GK must fully extend \u2014 bottom leg drives, top hand reaches to tip/save. Start slow.","cat":"Shot Stopping","reps":"4 x 6 each side","eq":["Balls"],"cp":"Push off inside foot; reach with top hand, don't fall into save","int":"Low"},{"n":"Power Step + Extension Dive","dur":8,"desc":"From standing, GK takes one power step to right, then fully extends right to save wide ball. Coach throws to a spot 1.5m outside comfortable reach. Progress to faster delivery.","cat":"Shot Stopping","reps":"4 x 6 each side","eq":["Balls"],"cp":"Power step is 45 degrees out \u2014 not sideways; explosive drive off that foot","int":"Low"},{"n":"High Ball Extension Saves","dur":6,"desc":"Coach lobs ball 1\u20132m above and beside GK. GK must jump, fully extend, and tip or catch above their head. Both sides.","cat":"Crosses & High Balls","reps":"3 x 8 each side","eq":["Balls"],"cp":"Jump off both feet; reach early \u2014 don't wait until ball is at peak","int":"Low"},{"n":"Three-Ball Sequence","dur":8,"desc":"Coach delivers 3 balls in quick succession: ball 1 is central (set), ball 2 is far left (collapse), ball 3 is far right (extension). No pause between balls.","cat":"Shot Stopping","reps":"4 x 3-ball sets each GK","eq":["Balls"],"cp":"Get up between balls; hands ready on reset","int":"Low"}]},{"name":"W2 Thursday \u2014 Reaction Saves & Reflex Training","focus":"Shot Stopping","week":2,"day":"Thursday","phase":"Pre-Season","wf":"Shot-Stopping Mechanics","drills":[{"n":"Tennis Ball Drop Reactions","dur":6,"desc":"GK faces away. Coach holds two tennis balls at shoulder height. On coach's call, GK turns \u2014 coach drops one ball. GK must catch it before second bounce. Progress to no verbal cue.","cat":"Shot Stopping","reps":"3 x 10 drops","eq":["Balls","Tennis Balls"],"cp":"Explosive first step; eyes immediately to ball after turn","int":"Medium"},{"n":"Close-Range Rapid Fire (Rebounder)","dur":10,"desc":"GK stands 3m from goal line. Coach fires from point-blank range at rebounder 2m in front of GK \u2014 GK saves the rebound. 6 balls with 3-second intervals. Very high intensity.","cat":"Shot Stopping","reps":"5 x 6-ball sets","eq":["Rebounder","Balls"],"cp":"Stay on feet where possible; quick hands, don't overthink","int":"High"},{"n":"Deflection Save Drill","dur":8,"desc":"First player shoots from 25m at a cone/mannequin 12m out. The ball deflects unpredictably. GK must read and save deflection. Cone angle changes each rep.","cat":"Shot Stopping","reps":"4 x 8 deflections","eq":["Cones","Mannequins","Balls"],"cp":"Watch shooter's body \u2014 not the cone; be ready to adjust mid-dive","int":"Medium"},{"n":"Screens + Reaction Shot","dur":8,"desc":"Two players stand between shooter and GK (5m out). Shooter fires from 20m \u2014 ball is unsighted until it passes screen. GK must react to late sight of ball.","cat":"Shot Stopping","reps":"4 x 8 shots","eq":["Balls"],"cp":"Stay in line with shooter's hips, not the screen; pick ball up early","int":"Medium"}]},{"name":"W2 Friday \u2014 Game-Speed Shot-Stopping","focus":"Shot Stopping","week":2,"day":"Friday","phase":"Pre-Season","wf":"Shot-Stopping Mechanics","drills":[{"n":"Live Shooting Game","dur":10,"desc":"Three outfield players each take turns shooting from edge of box. GK plays full competitive saves \u2014 no slow deliveries. Rotate all 3 GKs every 6 shots.","cat":"Mental / Decision Making","reps":"4 rounds x 6 shots each GK","eq":["Balls","GK Gloves"],"cp":"Compete \u2014 this is a game. Celebrate saves. Review position after each.","int":"Medium"},{"n":"Combination Play + Shot","dur":6,"desc":"Two players play a 1-2 combination, ending in a shot from 16m. GK must track ball movement and get set before shot. Different combinations each time.","cat":"Shot Stopping","reps":"3 x 8 combos each GK","eq":["Balls"],"cp":"Track the ball through the combination \u2014 adjust position as ball moves","int":"Medium"},{"n":"Post-Save Recovery + Second Ball","dur":8,"desc":"Coach shoots \u2014 GK saves. Immediately, second coach fires a second ball. GK must recover from ground and make second save. Tests recovery speed.","cat":"Shot Stopping","reps":"4 x 6 sequences each GK","eq":["Balls"],"cp":"Release ball, get up, find second ball \u2014 three steps only","int":"Low"},{"n":"Video Review + Angles Debrief","dur":15,"desc":"Bring GKs in after session. Review clips from week on tablet. Identify one angle issue per GK. Set individual target for next week.","cat":"Positioning","reps":"15 minutes discussion","eq":["Balls","GK Gloves"],"cp":"What did you see? What would you change? Own the analysis.","int":"Low"}]},{"name":"W3 Monday \u2014 Footwork to Cross & Claim vs Punch Decision","focus":"Crosses & High Balls","week":3,"day":"Monday","phase":"Pre-Season","wf":"Crossing & Aerial Dominance","drills":[{"n":"Three-Step Footwork to Cross","dur":10,"desc":"GK starts on 6-yard line. Crosser delivers from wide. GK must use 3-step approach: step to side, cross-step, jump and claim. Coach monitors footwork, not just outcome.","cat":"Crosses & High Balls","reps":"5 x 8 crosses each GK","eq":["Balls","GK Gloves"],"cp":"Attack the ball \u2014 don't wait for it; take off from inside foot","int":"Medium"},{"n":"Catch vs Punch Decision Drill","dur":8,"desc":"Coach delivers crosses from varying positions: near post, far post, central. GK must call 'keeper' and catch if comfortable, 'away' and punch if under pressure. A mannequin stands in box as defender/attacker.","cat":"Crosses & High Balls","reps":"4 x 10 crosses","eq":["Mannequins"],"cp":"Call early and loud; if in doubt \u2014 punch with power and direction","int":"Medium"},{"n":"1v1 vs Striker on Cross","dur":6,"desc":"Cross comes from wide. Striker enters box as cross is delivered. GK must claim or punch while making contact inevitable. Striker allowed to challenge \u2014 safe contact only.","cat":"Crosses & High Balls","reps":"3 x 8 each GK","eq":["Balls","GK Gloves"],"cp":"Claim at highest point; bring knee up for protection; never hesitate","int":"Medium"},{"n":"Near-Post Cross Reactions","dur":8,"desc":"Cross delivered to near post from right and left alternately. GK must decide in 0.5 seconds: attack and claim, or stay on line and deal with deflection. No second-guessing.","cat":"Crosses & High Balls","reps":"4 x 8 each side","eq":["Balls","GK Gloves"],"cp":"Commit to decision; attacking cross is always better than retreating","int":"Medium"}]},{"name":"W3 Tuesday \u2014 Box Command, Communication & Corner Routines","focus":"Crosses & High Balls","week":3,"day":"Tuesday","phase":"Pre-Season","wf":"Crossing & Aerial Dominance","drills":[{"n":"Verbal Box Communication","dur":6,"desc":"Set up crossing situation. GK must direct defenders before ball is delivered \u2014 call positions, warn of runners. Coach assesses quality of communication: early, specific, loud.","cat":"Communication","reps":"3 x 10 crosses","eq":["Balls"],"cp":"Communicate before cross, not as it arrives; use names, not just 'keeper'","int":"Medium"},{"n":"Corner Kick Organization Drill","dur":6,"desc":"Full back post/near post corner scenario. GK organizes 4 outfield players. Coach delivers corner \u2014 GK directs play. Run different: inswing, outswing, short corner.","cat":"Crosses & High Balls","reps":"3 x 8 corner scenarios","eq":["Balls","GK Gloves"],"cp":"Set positions before kick \u2014 not during; stay off line until ball moves","int":"Medium"},{"n":"Crosses Under Fatigue","dur":8,"desc":"GK completes 5 lateral shuffles (10m each direction), then must claim a cross immediately after. Simulate in-game tiredness. 3 GKs rotate.","cat":"Crosses & High Balls","reps":"4 x 8 crosses after shuffle","eq":["Balls","GK Gloves"],"cp":"Breathe \u2014 reset between reps; don't rush footwork even when tired","int":"Medium"},{"n":"Box Leadership Scenario","dur":6,"desc":"Full 8v8 with two GKs (one in goal, one as field player). Inswinging crosses from right. GK must claim and immediately distribute to trigger counter-attack.","cat":"Communication","reps":"3 x 10-minute game","eq":["Balls","GK Gloves"],"cp":"Make a decision and commit; first outlet should be switched ball wide","int":"Medium"}]},{"name":"W3 Thursday \u2014 Sweeper-Keeper Movement & 1v1 at Feet","focus":"Distribution","week":3,"day":"Thursday","phase":"Pre-Season","wf":"Crossing & Aerial Dominance","drills":[{"n":"Through-Ball Sweeping Drill","dur":8,"desc":"Coach plays ball over defensive line. GK starts on edge of 6-yard box. On coach's call, GK sprints to ball, collects cleanly and distributes quickly. Ball played at varying distances.","cat":"Playing Out From Back","reps":"4 x 8 each GK","eq":["Balls"],"cp":"Read the pass before it's played; sprint on diagonal, not straight","int":"Medium"},{"n":"1v1 Smother/Dive at Feet","dur":8,"desc":"Striker receives ball 20m from goal and runs at GK. GK advances and waits for striker to commit. Smother/block at feet \u2014 diving through the ball. Safe technique only.","cat":"1v1 Situations","reps":"4 x 6 runs each GK","eq":["Balls"],"cp":"Don't go too early; get low, stay strong, present hands and body together","int":"Medium"},{"n":"Recovery Sprint + Cross Claim","dur":6,"desc":"GK plays through ball out (sweeper role). Coach plays in a cross immediately from wide. GK must recover 15m back and claim the cross under time pressure.","cat":"Crosses & High Balls","reps":"3 x 8 sequences","eq":["Balls"],"cp":"Sprint back in straight line; readjust position in final 3 steps","int":"Low"},{"n":"Half-Volley Distribution","dur":10,"desc":"GK holds ball and drops it, striking on the half-volley to targets at 30m, 40m, and 50m. Vary left and right foot. Target is a cone zone, not a specific point.","cat":"Distribution","reps":"5 x 10 kicks each GK","eq":["Cones","Balls"],"cp":"Drop ball slightly in front; strike slightly below center for height and distance","int":"Medium"}]},{"name":"W3 Friday \u2014 Full Crossing Game Under Competitive Conditions","focus":"Crosses & High Balls","week":3,"day":"Friday","phase":"Pre-Season","wf":"Crossing & Aerial Dominance","drills":[{"n":"3v3 + GK Crossing Game","dur":5,"desc":"Half-pitch. Three attackers, three defenders, one GK. Ball must go wide before a cross can be delivered. GK competes for every cross. 10-min game.","cat":"Crosses & High Balls","reps":"2 x 10-minute games","eq":["Balls"],"cp":"GK directs defense constantly; catch everything catchable \u2014 no unnecessary punches","int":"Medium"},{"n":"High-Pressure Corner Sequence","dur":6,"desc":"Coach delivers 8 corners in 4 minutes \u2014 alternating sides, mixing inswing and outswing. GK must claim or punch every one. No break between corners.","cat":"Crosses & High Balls","reps":"3 x 8-corner sequences","eq":["Balls","GK Gloves"],"cp":"Trust footwork; call every ball; no ball unclaimed in 6-yard box","int":"High"},{"n":"Full-Width Crossing Competition","dur":10,"desc":"Two crossers on each side. GK must deal with 6 crosses in a row from alternating sides. Striker challenges every ball. Score: 1pt for clean claim, 0 for punch, -1 for conceded.","cat":"Crosses & High Balls","reps":"3 rounds each GK","eq":["Balls"],"cp":"Compete; use score to build mentality for aerial duels","int":"High"}]},{"name":"W4 Monday \u2014 Long Distribution Accuracy & Variety","focus":"Distribution","week":4,"day":"Monday","phase":"Pre-Season","wf":"Distribution & Sweeper-Keeper Integration","drills":[{"n":"Drop-Kick Target Zones","dur":8,"desc":"Three zones marked at 30m, 40m, and 50m. GK drop-kicks to each zone alternating. Target is 5m wide zone \u2014 not a spot. Both sides of pitch.","cat":"Distribution","reps":"4 x 10 kicks each GK","eq":["Balls","GK Gloves"],"cp":"Consistent drop height; don't over-swing \u2014 let technique do the work","int":"Medium"},{"n":"Half-Volley Width Switch","dur":6,"desc":"GK switches play with a half-volley to opposite wide zone (40m+). Wide target player controls and plays back. Focused on accuracy across width of pitch.","cat":"Distribution","reps":"3 x 10 each foot","eq":["Balls","GK Gloves"],"cp":"Strike low-to-mid on ball; slight lean back for lift, forward for driven","int":"Medium"},{"n":"Rolling Restart under Press","dur":8,"desc":"One pressing player at 10m. GK must throw or roll to a target player at 15m before press reaches them. Targets in 4 positions. GK must choose fastest option.","cat":"Distribution","reps":"4 x 10 restarts","eq":["Balls","GK Gloves"],"cp":"Decision before throw \u2014 eyes up first; roll/throw to feet not space","int":"Medium"},{"n":"Punt Accuracy Challenge","dur":6,"desc":"GK punts to zones marked inside-left, inside-right, and central (all at 35\u201345m). Score 1pt per zone hit. Competitive between GKs. 10 punts each.","cat":"Distribution","reps":"3 x 10 punts each","eq":["Balls","GK Gloves"],"cp":"Consistent technique; don't go for distance at expense of accuracy","int":"Medium"}]},{"name":"W4 Tuesday \u2014 Sweeper-Keeper Positioning & Decision-Making","focus":"Distribution","week":4,"day":"Tuesday","phase":"Pre-Season","wf":"Distribution & Sweeper-Keeper Integration","drills":[{"n":"High Line Positioning Game","dur":8,"desc":"GK plays as sweeper behind a high defensive line. Coach plays balls over line randomly. GK must decide: sweep/collect OR retreat to goal. Decision threshold: can I reach it before striker?","cat":"Positioning","reps":"4 x 8 decisions each GK","eq":["Balls"],"cp":"If ball is past halfway point between GK and striker \u2014 retreat; otherwise go","int":"Medium"},{"n":"Playing Through the Press (Feet)","dur":8,"desc":"Three pressing players at 15m, 25m, and 35m. GK has 3 seconds to play short to an outlet (5m wide). Must play through press in max 3 touches.","cat":"Playing Out From Back","reps":"4 x 8 press scenarios","eq":["Balls","GK Gloves"],"cp":"First touch sets direction; second touch is the pass \u2014 don't hold it","int":"Medium"},{"n":"Receiving Under Pressure Back-Pass","dur":6,"desc":"Defender plays back-pass under pressure. GK receives with right foot, controls, and plays out wide before pressing player arrives (7 seconds max). Vary angle of back-pass.","cat":"Playing Out From Back","reps":"3 x 10 back-passes each GK","eq":["Balls","GK Gloves"],"cp":"Communicate before ball arrives ('drop it' / 'man on'); open body early","int":"High"},{"n":"GK-Led Counter-Attack Trigger","dur":8,"desc":"GK makes save or claims cross. Immediately looks to play quickly \u2014 before opponent recovers. Must find runner making run in 3 seconds max. Outfield players pre-set runs.","cat":"Playing Out From Back","reps":"4 x 8 counter triggers","eq":["Balls","GK Gloves"],"cp":"Eyes up before ball is in hands; throw always beats kick for speed","int":"Medium"}]},{"name":"W4 Thursday \u2014 Pre-Season Evaluation & Penalty Practice","focus":"Set Pieces","week":4,"day":"Thursday","phase":"Pre-Season","wf":"Distribution & Sweeper-Keeper Integration","drills":[{"n":"Full Technical Individual Review","dur":15,"desc":"Each GK gets 15 min 1-on-1 with coach. Review clips from past 3 weeks. Identify: best skill, biggest weakness, one technical focus for the season. Written on card.","cat":"Mental / Decision Making","reps":"15 min x 3 GKs","eq":["Balls","GK Gloves"],"cp":"This is development, not selection. Honest, specific, encouraging.","int":"Low"},{"n":"Penalty Shootout Routine","dur":10,"desc":"Each GK faces 5 penalties from different takers. GK establishes a pre-kick routine: stance, focus point, breath. No anticipating \u2014 react to shot. Record saves/direction.","cat":"Set Pieces","reps":"5 penalties each GK","eq":["Balls","GK Gloves"],"cp":"Stay on line until ball is struck; explode to corner; track shooter's hips","int":"High"},{"n":"Full Penalty Chart Review","dur":10,"desc":"Show GKs their first penalty chart entry. Record: shooter foot, placement, run-up angle, eye contact. Build chart that will grow all season into playoff preparation.","cat":"Set Pieces","reps":"10-minute discussion","eq":["Balls","GK Gloves"],"cp":"Pattern recognition is a skill \u2014 take it seriously from Day 1","int":"Low"},{"n":"Individual Goal Setting","dur":10,"desc":"Each GK writes 3 technical goals, 1 leadership goal, and 1 mental goal for the season. Sealed and given to coach. Reviewed at Week 8 and Week 16.","cat":"Mental / Decision Making","reps":"10 min individual writing","eq":["Balls","GK Gloves"],"cp":"Goals must be specific and measurable \u2014 not 'improve distribution'","int":"Low"}]},{"name":"W4 Friday \u2014 Pre-Season Match Simulation","focus":"Mental / Decision Making","week":4,"day":"Friday","phase":"Pre-Season","wf":"Distribution & Sweeper-Keeper Integration","drills":[{"n":"Full 11v11 Scrimmage \u2014 Rotating GKs","dur":10,"desc":"All 3 GKs play: starter (25 min), GK2 (20 min), GK3 (15 min). Full competitive intensity. No coaching during \u2014 observe, note issues, debrief after.","cat":"1v1 Situations","reps":"60-minute scrimmage","eq":["Balls","GK Gloves"],"cp":"Observe: distribution under pressure, crossing decisions, voice and leadership","int":"High"},{"n":"Post-Match Individual Debrief","dur":5,"desc":"Each GK gets 5-min 1-on-1 with coach after scrimmage. One positive. One area to improve. One drill they'll do extra next week.","cat":"Mental / Decision Making","reps":"5 min x 3 GKs","eq":["Balls","GK Gloves"],"cp":"Keep it positive overall \u2014 build confidence going into season opener","int":"Low"}]},{"name":"W5 Monday \u2014 Post-Match Active Recovery","focus":"Recovery","week":5,"day":"Monday","phase":"Early Season","wf":"Competition Sharpening","drills":[{"n":"Dynamic Mobility + Activation","dur":10,"desc":"10-minute structured mobility: hip circles, thoracic rotation, hamstring sweeps, ankle rolls. GKs lead themselves \u2014 no coach instruction. Purposeful movement, not passive stretch.","cat":"Recovery","reps":"10 minutes","eq":["Balls","GK Gloves"],"cp":"Move at 40% \u2014 purpose is blood flow, not fitness; breathe deeply","int":"Low"},{"n":"Light Technical Touches","dur":15,"desc":"GKs work in pairs 8m apart. Simple rolling, catching, throwing back. Focus: clean hands, good shape, zero pressure. No competition.","cat":"Shot Stopping","reps":"15 minutes","eq":["Balls","GK Gloves"],"cp":"Perfect technique at low speed \u2014 reinforce good habits after game","int":"Low"},{"n":"Match Debrief Discussion","dur":15,"desc":"Seated discussion. Coach leads: what worked? What didn't? One moment each GK is proud of. One moment they'd change. Build honest self-assessment culture.","cat":"Mental / Decision Making","reps":"15 minutes","eq":["Balls","GK Gloves"],"cp":"No blame; only learning. The save or mistake is already gone.","int":"Low"}]},{"name":"W5 Tuesday \u2014 Shot-Stopping at Game Speed","focus":"Shot Stopping","week":5,"day":"Tuesday","phase":"Early Season","wf":"Competition Sharpening","drills":[{"n":"Driven Shots from Edge of Box (Strikers)","dur":8,"desc":"Three outfield players take turns shooting from various spots on edge of 18. No slow deliveries \u2014 match speed. GK rotates every 8 shots.","cat":"Shot Stopping","reps":"4 x 8 shots per GK","eq":["Balls","GK Gloves"],"cp":"Set before shot \u2014 don't be caught moving; explode to corner","int":"Medium"},{"n":"Combination Play + Finish","dur":6,"desc":"Two players play a one-two or overlapping run before finishing. GK tracks ball movement through combination. Shot from 10\u201318m.","cat":"Shot Stopping","reps":"3 x 8 combos each GK","eq":["Balls"],"cp":"Adjust position as ball moves; get set as striker prepares to shoot","int":"Medium"},{"n":"Rapid-Fire Rebounder + Recovery","dur":10,"desc":"Coach fires ball at rebounder 3m in front of GK. GK saves rebound. Immediately, second ball fired. 6-ball set with no rest. GK must recover from every dive.","cat":"Shot Stopping","reps":"5 x 6-ball sets","eq":["Rebounder","Balls"],"cp":"Speed of recovery is the skill \u2014 stay hungry between balls","int":"Low"},{"n":"High-Ball + Secondary Low Shot","dur":8,"desc":"Cross delivered high \u2014 GK punches or catches. Immediately, second ball driven low to corner. Tests reaction after aerial action.","cat":"Shot Stopping","reps":"4 x 8 sequences each GK","eq":["Balls"],"cp":"Land balanced; scan for second ball before feet hit ground","int":"Medium"}]},{"name":"W5 Thursday \u2014 Distribution Under Game Pressure","focus":"Distribution","week":5,"day":"Thursday","phase":"Early Season","wf":"Competition Sharpening","drills":[{"n":"Press-Resistance Short Game","dur":8,"desc":"GK receives back-pass, two presser approach from 15m. GK must play short to 1 of 3 marked players within 4 seconds. Player plays back \u2014 repeat. 8 cycles.","cat":"Playing Out From Back","reps":"4 x 8 cycles each GK","eq":["Balls","GK Gloves"],"cp":"Communicate before ball arrives; first touch opens body to target","int":"High"},{"n":"Long Switch Under Time Pressure","dur":6,"desc":"GK has 3 seconds to punt or half-volley to a wide target (35m+). Presser puts arm up at 3 seconds. Accuracy scored out of 10.","cat":"Playing Out From Back","reps":"3 x 10 kicks each","eq":["Balls","GK Gloves"],"cp":"Decision at 1 second \u2014 execution at 2\u20133; don't hold the ball","int":"High"},{"n":"Save + Immediate Counter-Launch","dur":8,"desc":"Striker shoots \u2014 GK saves. Immediately, two forwards break wide. GK must launch counter within 3 seconds to sprint runner. Simulates winning a save and countering.","cat":"Shot Stopping","reps":"4 x 8 save-launches","eq":["Balls","GK Gloves"],"cp":"The save is only half the action \u2014 the launch wins the game","int":"High"},{"n":"Back-Pass Chain (4-Pass Build)","dur":8,"desc":"GK receives back-pass and must connect a 4-pass build-out before ball reaches halfway. GK starts chain. If press wins ball within 4 passes, 1 press point.","cat":"Playing Out From Back","reps":"4 x 8 build-outs","eq":["Balls"],"cp":"Play simple; GK's job is to start the chain cleanly, not end it","int":"High"}]},{"name":"W5 Friday \u2014 Pre-Match Preparation & Mental Readiness","focus":"Communication","week":5,"day":"Friday","phase":"Early Season","wf":"Competition Sharpening","drills":[{"n":"Structured Activation Warm-Up","dur":25,"desc":"Coach leads full GK warm-up routine: jog, dynamic mobility, footwork ladder, catching, low shots, high shots, crosses. This is the match-day warm-up \u2014 repeat it identically every Friday.","cat":"Recovery","reps":"25 minutes","eq":["Agility Ladder"],"cp":"This routine is a ritual \u2014 the same every week builds mental readiness","int":"Low"},{"n":"Set-Piece Mental Rehearsal","dur":6,"desc":"GK stands in goal. Coach calls scenarios aloud: 'Corner inswing left' \u2014 GK walks through the positioning verbally and physically without ball. 'Free kick top of box' \u2014 GK sets wall and position.","cat":"Set Pieces","reps":"3 x 6 scenarios","eq":["Balls"],"cp":"Visualize each scenario clearly; walk through it slowly and accurately","int":"Low"}]},{"name":"W6 Monday \u2014 Post-Match Recovery","focus":"Recovery","week":6,"day":"Monday","phase":"Early Season","wf":"Set Pieces & Tactical Scenarios","drills":[{"n":"Recovery + Individual Video","dur":30,"desc":"15-min mobility. Then 15-min individual video clip review per GK (30 min total for 2 GKs \u2014 starter and GK2 alternating). Coach highlights 1 positive, 1 improvement.","cat":"Recovery","reps":"30 minutes total","eq":["Balls","GK Gloves"],"cp":"Reinforce what they did right \u2014 confidence is built here","int":"Low"},{"n":"Light Set-Piece Walk-Through","dur":15,"desc":"GKs walk through positioning for next opponent's set pieces (based on scouting). Slow, no physical output \u2014 just mental mapping.","cat":"Set Pieces","reps":"15 minutes","eq":["Balls","GK Gloves"],"cp":"No intensity \u2014 plant the information for Thursday's session","int":"Low"}]},{"name":"W6 Tuesday \u2014 Defensive Set Pieces \u2014 Corners & Free Kicks","focus":"Crosses & High Balls","week":6,"day":"Tuesday","phase":"Early Season","wf":"Set Pieces & Tactical Scenarios","drills":[{"n":"Corner Organization & Positioning","dur":6,"desc":"Full back four + GK. Coach delivers 8 corners: inswing near, inswing far, outswing, short corners. GK organizes before each delivery. Assess: timing of positioning, calls, claim quality.","cat":"Crosses & High Balls","reps":"3 x 8 corners","eq":["Balls","GK Gloves"],"cp":"Organize BEFORE the kick is taken \u2014 not as the ball is in the air","int":"Medium"},{"n":"Free Kick Wall + GK Position","dur":8,"desc":"Free kicks from 20m, 22m, 25m. GK sets wall (covering near post), positions slightly toward far post. Ball delivered over/around/through wall. GK saves.","cat":"Distribution","reps":"4 x 8 free kicks","eq":["Balls"],"cp":"Check wall is set before looking at shooter; cover the gap between wall and post","int":"Medium"},{"n":"Post-Corner Transition Save","dur":6,"desc":"Corner is delivered, GK claims or punches away. Immediately, recycled ball is shot from edge of box (2-second delay). GK must reset after aerial action.","cat":"Crosses & High Balls","reps":"3 x 8 sequences","eq":["Balls"],"cp":"Land with eyes on play \u2014 not just looking down; scan immediately","int":"Medium"}]},{"name":"W6 Thursday \u2014 1v1 Specialization","focus":"1v1 Situations","week":6,"day":"Thursday","phase":"Early Season","wf":"Set Pieces & Tactical Scenarios","drills":[{"n":"Controlled Advance to 1v1","dur":8,"desc":"Striker receives ball in behind at 25m and runs at goal. GK advances from line, sets at right moment \u2014 neither too early (gets lobbed) nor too late (no angle reduction). Coach calls 'set' to mark optimal moment.","cat":"1v1 Situations","reps":"4 x 8 runs each GK","eq":["Balls"],"cp":"Advance quickly, set early; be a BIG obstacle \u2014 arms out, body wide","int":"Medium"},{"n":"Smother Dive Technique (1v1 at Feet)","dur":6,"desc":"Striker at 15m runs full speed. At 8m, GK dives at feet \u2014 smothering ball by throwing body across line of the ball. Ball padded (safe training). Focus on leading with hands, not head.","cat":"1v1 Situations","reps":"3 x 8 each GK","eq":["Balls"],"cp":"Lead with fists/hands, not head; get low early; take the ball, not the legs","int":"Medium"},{"n":"Stay-on-Feet 1v1 Game","dur":8,"desc":"1v1 from 18m with shooter starting wide. GK must stay on feet as long as possible \u2014 no diving until shot is taken. Builds patience and forces striker to commit first.","cat":"1v1 Situations","reps":"4 x 8 each GK","eq":["Balls","GK Gloves"],"cp":"Don't sell yourself; if they delay \u2014 stay big; dive only as ball is struck","int":"Medium"},{"n":"1v1 After Sweeping Recovery","dur":6,"desc":"GK sweeps a through-ball, recovers to line, and faces an immediate 1v1 from second striker. Tests recovery and composure in sequence.","cat":"1v1 Situations","reps":"3 x 6 sequences","eq":["Balls"],"cp":"Reset breathing between sweep and 1v1; don't rush \u2014 reset stance","int":"Low"}]},{"name":"W6 Friday \u2014 Game State Scenarios","focus":"Mental / Decision Making","week":6,"day":"Friday","phase":"Early Season","wf":"Set Pieces & Tactical Scenarios","drills":[{"n":"Winning by 1: Delay & Security Decisions","dur":5,"desc":"Team ahead by 1 goal. Late in game scenario. Coach instructs GK on managing time: when to hold ball on ground before kick, how to delay restarts within rules.","cat":"Mental / Decision Making","reps":"2 x 10-minute game","eq":["Balls"],"cp":"Smart, not cynical \u2014 manage time by being composed, not time-wasting","int":"Medium"},{"n":"Losing by 1: High-Risk Decision Play","dur":5,"desc":"Team losing in final 10 minutes. GK must risk coming for more crosses, launch balls over top faster, communicate urgency to defenders. Pressure the game.","cat":"Mental / Decision Making","reps":"2 x 10-minute game","eq":["Balls"],"cp":"Calculated risks \u2014 not reckless; the right risk at the right moment","int":"Medium"}]},{"name":"W7 Monday \u2014 Active Recovery + Communication Drilling","focus":"Recovery","week":7,"day":"Monday","phase":"Early Season","wf":"High-Intensity & Conditioning Block","drills":[{"n":"Individual Clip Review","dur":10,"desc":"Each GK watches 3 clips from last match \u2014 selected by coach in advance. Discuss: what were you thinking? What did you read? What would you change?","cat":"Mental / Decision Making","reps":"10 min per GK","eq":["Balls","GK Gloves"],"cp":"The goal is self-awareness, not self-criticism","int":"Low"},{"n":"Communication Drilling \u2014 Back Line","dur":6,"desc":"GK and 4-man defense walk through 6 scenarios without ball: striker dropping deep, winger cutting in, ball switching side, corner kick, long ball played in behind. GK calls every scenario.","cat":"Communication","reps":"3 x 6 scenarios","eq":["Balls"],"cp":"Call before, during, and after \u2014 constant voice is a GK's weapon","int":"Low"}]},{"name":"W7 Tuesday \u2014 Power, Explosiveness & Athletic Conditioning","focus":"Physical Conditioning","week":7,"day":"Tuesday","phase":"Early Season","wf":"High-Intensity & Conditioning Block","drills":[{"n":"Box Jump + Immediate Dive Save","dur":8,"desc":"GK jumps onto 40cm box and off \u2014 immediately upon landing, coach fires shot low to corner. GK must dive from landing position. 6 reps each side.","cat":"Shot Stopping","reps":"4 x 6 each side","eq":["Hurdles"],"cp":"Land softly, absorb shock, explode to ball \u2014 no freeze at landing","int":"High"},{"n":"Lateral Sprint + Collapse Dive","dur":8,"desc":"10m marker placed each side. GK sprints to right marker (7m), touches it, sprints back \u2014 immediately collapses to save low ball far left. Opposite direction next rep.","cat":"Shot Stopping","reps":"4 x 8 each direction","eq":["Balls"],"cp":"Full sprint \u2014 not jog; save quality matters even in conditioning drill","int":"High"},{"n":"Rebounder Sprint + Return","dur":8,"desc":"GK saves rebounder ball, sprints to right cone 5m away, sprints back \u2014 saves next rebounder. 8-ball sequence with sprint between each.","cat":"Shot Stopping","reps":"4 x 8-ball sequences","eq":["Cones","Rebounder","Balls"],"cp":"This is conditioning \u2014 maintain high quality even when breathing hard","int":"High"},{"n":"Plyometric Jump + Cross Claim","dur":6,"desc":"Two vertical jumps off both feet, then crosser delivers immediately. GK must claim cross while heart rate is elevated. Simulates aerial duels after physical exertion.","cat":"Crosses & High Balls","reps":"3 x 8 jump-claim sequences","eq":["Balls","GK Gloves"],"cp":"Control your breath before jumping for ball \u2014 don't panic","int":"High"}]},{"name":"W7 Thursday \u2014 Crosses + 1v1 Blitz","focus":"Crosses & High Balls","week":7,"day":"Thursday","phase":"Early Season","wf":"High-Intensity & Conditioning Block","drills":[{"n":"Cross \u2192 Immediate 1v1 Transition","dur":8,"desc":"Cross delivered \u2014 GK claims or punches. Immediately, striker released 1v1 from 20m. GK must recover to face 1v1 after aerial action. 3 second delay max.","cat":"Crosses & High Balls","reps":"4 x 8 sequences","eq":["Balls","GK Gloves"],"cp":"Land balanced; lock eyes on striker immediately; advance to set position","int":"High"},{"n":"3-Man Crossing Rotation","dur":8,"desc":"Crossers on left, right, and central positions at 30m. Coach calls which crosser delivers \u2014 GK adjusts position and claims. Rapid rotation: new cross every 5 seconds.","cat":"Crosses & High Balls","reps":"4 x 10-cross sequences","eq":["Balls","GK Gloves"],"cp":"Micro-adjust position as the crosser runs \u2014 not after the cross is hit","int":"High"},{"n":"Penalty Pressure Sequence","dur":10,"desc":"Each GK faces 6 penalties from 3 different shooters. First: routine kick. Second: shooter changes run-up at last moment. Third: delayed run-up. GK must wait.","cat":"Set Pieces","reps":"6 penalties each GK","eq":["Balls","GK Gloves"],"cp":"Trust your reaction; stay on line as long as possible; back yourself","int":"High"}]},{"name":"W7 Friday \u2014 Match Simulation \u2014 Full Intensity","focus":"Mental / Decision Making","week":7,"day":"Friday","phase":"Early Season","wf":"High-Intensity & Conditioning Block","drills":[{"n":"Full 11v11 Competitive Scrimmage","dur":10,"desc":"Full game. Starter plays first 30 minutes, GK2 plays final 20 minutes. GK3 warms up on side \u2014 faces extra training coach 15 minutes simultaneously.","cat":"1v1 Situations","reps":"50-minute scrimmage","eq":["Balls","GK Gloves"],"cp":"Observe: voice under pressure, starting position on set pieces, distribution decisions","int":"High"},{"n":"Post-Match Warm-Down","dur":15,"desc":"10-minute light jog + full body static stretch. GKs lead their own warm-down \u2014 important for body autonomy and habit.","cat":"Recovery","reps":"15 minutes","eq":["Balls","GK Gloves"],"cp":"Build the routine \u2014 professional players cool down. Period.","int":"High"}]},{"name":"W8 Monday \u2014 Individual Weakness Session","focus":"Mental / Decision Making","week":8,"day":"Monday","phase":"Early Season","wf":"Consolidation & Individual Focus","drills":[{"n":"Per-GK Identified Weakness Drills","dur":20,"desc":"Based on weeks 5\u20137 assessment, each GK has ONE identified weakness. 20-minute focused, repetition-heavy session on that exact skill only. (e.g. GK1: angle play. GK2: distribution under press. GK3: crosses.)","cat":"Shot Stopping","reps":"20 min each GK individually","eq":["Balls","GK Gloves"],"cp":"Repetition builds the new habit; stay patient with the process","int":"Medium"},{"n":"Confidence-Building Reps","dur":10,"desc":"End each individual session with 8 high-success-rate reps in the GK's strongest skill area. Finish on a positive.","cat":"Playing Out From Back","reps":"8 reps each GK","eq":["Balls","GK Gloves"],"cp":"Build confidence before next match \u2014 send them out feeling good","int":"Medium"}]},{"name":"W8 Tuesday \u2014 Technical Polish \u2014 All Core Areas","focus":"Shot Stopping","week":8,"day":"Tuesday","phase":"Early Season","wf":"Consolidation & Individual Focus","drills":[{"n":"Footwork + Angle Play Combined","dur":8,"desc":"Footwork ladder 5 patterns, then immediately GK sets angle for shot delivered from edge of box. No pause between footwork and shot.","cat":"Positioning","reps":"4 x 8 sequences","eq":["Agility Ladder"],"cp":"Footwork quality matters even before save \u2014 sloppy start = sloppy save","int":"Medium"},{"n":"Distribution Consistency Test","dur":10,"desc":"Each GK takes 10 goal kicks, 10 half-volleys, 10 throws. Scored for accuracy to target zone. Result recorded \u2014 compared to Week 1 baseline.","cat":"Distribution","reps":"30 deliveries each GK","eq":["Balls","GK Gloves"],"cp":"Measure the improvement \u2014 own your progress","int":"Medium"},{"n":"Crossing Decision Test","dur":6,"desc":"10 crosses delivered in sequence: some easy claims, some risky. GK must call decision before flight of ball is obvious. Scored: clean claim=2, correct punch=1, wrong decision=0.","cat":"Crosses & High Balls","reps":"3 x 10 crosses each GK","eq":["Balls"],"cp":"Trust the early read \u2014 late decisions are always worse","int":"Medium"}]},{"name":"W8 Thursday \u2014 Light Sharpening","focus":"Recovery","week":8,"day":"Thursday","phase":"Early Season","wf":"Consolidation & Individual Focus","drills":[{"n":"Quick Reaction Shot-Stopping","dur":6,"desc":"Coach fires 10 shots in 3 minutes \u2014 rapid, low rest. GK works through all distances and types. Not power \u2014 precision and quick hands.","cat":"Shot Stopping","reps":"3 x 10 shots each GK","eq":["Balls","GK Gloves"],"cp":"Stay sharp even on the 9th and 10th ball \u2014 this is mental endurance too","int":"Low"},{"n":"Sweeper-Keeper Decision Drill","dur":6,"desc":"Coach plays 8 balls over defensive line at varying distances. GK must decide: go or stay. Call out loud before moving.","cat":"Playing Out From Back","reps":"3 x 8 decisions each GK","eq":["Balls"],"cp":"Loud decision = confident GK; quiet GK = uncertain GK","int":"Low"},{"n":"Back Line Communication Game","dur":5,"desc":"4v4 + GK. GK must give a minimum of 3 instructions per minute of play. Coach counts calls \u2014 feedback after.","cat":"Communication","reps":"2 x 10-minute games","eq":["Balls","GK Gloves"],"cp":"Talking costs nothing; silence costs goals","int":"Low"}]},{"name":"W8 Friday \u2014 Full Match Preparation Routine","focus":"Mental / Decision Making","week":8,"day":"Friday","phase":"Early Season","wf":"Consolidation & Individual Focus","drills":[{"n":"Standard Pre-Match Warm-Up Routine","dur":25,"desc":"GKs run the full match-day routine identically to every Friday. This is now a polished 25-minute sequence.","cat":"Recovery","reps":"25 minutes","eq":["Balls","GK Gloves"],"cp":"Routine is performance readiness \u2014 it should feel automatic by now","int":"Medium"},{"n":"Goal-Setting Mid-Season Check","dur":15,"desc":"Brief 1-on-1 with each GK. Review the goals set in Week 4. What progress? What still needs work? Adjust if necessary. 5 min each GK.","cat":"Mental / Decision Making","reps":"15 min total","eq":["Balls","GK Gloves"],"cp":"Own your development \u2014 the plan is for you, not about you","int":"Low"}]},{"name":"W9 Monday \u2014 Active Recovery","focus":"Recovery","week":9,"day":"Monday","phase":"Mid-Season","wf":"Load Management & Maintenance","drills":[{"n":"Stretch & Mobility Circuit","dur":20,"desc":"20-minute coach-led full-body mobility: IT band, hip flexors, thoracic, shoulder circles. GKs in pairs assisting each other.","cat":"Recovery","reps":"20 minutes","eq":["Resistance Bands"],"cp":"This is non-negotiable \u2014 recovery is training","int":"Low"},{"n":"Ball Mastery + Touch Session","dur":15,"desc":"GKs juggle, roll, and toss freely for 15 minutes. No coach instruction \u2014 free play with a ball. Reinforce love of the ball.","cat":"Mental / Decision Making","reps":"15 minutes","eq":["Balls"],"cp":"Enjoy it \u2014 stay connected to the joy of the sport","int":"Low"}]},{"name":"W9 Tuesday \u2014 Technical Maintenance \u2014 Moderate Volume","focus":"Shot Stopping","week":9,"day":"Tuesday","phase":"Mid-Season","wf":"Load Management & Maintenance","drills":[{"n":"Shot-Stopping (Moderate Intensity)","dur":10,"desc":"20 shots each GK \u2014 varied types: driven low, curling, volleys. All from game-realistic positions. Not rapid-fire \u2014 purposeful.","cat":"Shot Stopping","reps":"20 shots each GK","eq":["Balls","GK Gloves"],"cp":"Quality over quantity this week; save every one","int":"Medium"},{"n":"Distribution Flow Drill","dur":8,"desc":"GK receives back-pass, distributes to right, receives back, distributes left, receives back, distributes long. 6-rep chain. Emphasize smoothness.","cat":"Distribution","reps":"4 x 6-rep chains each","eq":["Balls","GK Gloves"],"cp":"Keep feet moving; no standing and admiring passes","int":"Medium"},{"n":"Crossing Maintenance (3 Per GK)","dur":10,"desc":"3 crosses each from left, right, and central. GK claims all. Low pressure \u2014 technique only.","cat":"Crosses & High Balls","reps":"9 crosses each GK","eq":["Balls","GK Gloves"],"cp":"Claim cleanly \u2014 reinforce good habits, not new ones","int":"Medium"}]},{"name":"W9 Thursday \u2014 Opponent-Specific Preparation","focus":"Mental / Decision Making","week":9,"day":"Thursday","phase":"Mid-Season","wf":"Load Management & Maintenance","drills":[{"n":"Opponent Striker Pattern Simulation","dur":10,"desc":"Based on scouting, coach identifies how opponent's main striker likes to shoot (e.g. cuts inside right foot to far post). Run 10 simulated finishes from that pattern.","cat":"Mental / Decision Making","reps":"10 shots per pattern","eq":["Balls","GK Gloves"],"cp":"Read the body shape early \u2014 the pattern reveals the shot","int":"High"},{"n":"Opponent Set-Piece Walkthrough","dur":6,"desc":"Walk through exactly how opponent delivers corners and free kicks (based on match footage review or scouting report). GK positions specifically for opponent tendencies.","cat":"Set Pieces","reps":"3 x 6 scenarios","eq":["Balls","GK Gloves"],"cp":"Specific preparation = specific confidence. You've seen this before.","int":"Low"},{"n":"Opponent Distribution Triggers","dur":8,"desc":"If opponent presses GKs, practice specific pass-out patterns \u2014 not generic. If opponent sits deep, practice long-ball timing to specific runs.","cat":"Distribution","reps":"4 x 8 triggered decisions","eq":["Balls"],"cp":"The preparation is the work \u2014 execute confidently on match day","int":"Medium"}]},{"name":"W9 Friday \u2014 Pre-Match Activation Only","focus":"Recovery","week":9,"day":"Friday","phase":"Mid-Season","wf":"Load Management & Maintenance","drills":[{"n":"Standard Activation Warm-Up","dur":25,"desc":"Identical 25-minute match-day routine. Clean saves, routine crosses, light distribution. Zero new content.","cat":"Recovery","reps":"25 minutes","eq":["Balls","GK Gloves"],"cp":"Low intensity \u2014 sharpen, don't fatigue; arrive at game ready","int":"Low"}]},{"name":"W10 Monday \u2014 Recovery + Video Debrief","focus":"Recovery","week":10,"day":"Monday","phase":"Mid-Season","wf":"Crossing & Aerial Refresh","drills":[{"n":"Full Video Debrief","dur":20,"desc":"All 3 GKs review collective 5 clips \u2014 2 saves, 1 distribution moment, 1 crossing decision, 1 positional moment. Group discussion.","cat":"Mental / Decision Making","reps":"20 minutes","eq":["Balls","GK Gloves"],"cp":"Learn together \u2014 group review builds collective intelligence","int":"Low"},{"n":"Light Technical Touch","dur":15,"desc":"15 minutes free catching and rolling. Pairs, no pressure.","cat":"Shot Stopping","reps":"15 minutes","eq":["Balls","GK Gloves"],"cp":"Ease back into movement","int":"Low"}]},{"name":"W10 Tuesday \u2014 Crossing Deep-Dive (All 3 GKs Equal Time)","focus":"Crosses & High Balls","week":10,"day":"Tuesday","phase":"Mid-Season","wf":"Crossing & Aerial Refresh","drills":[{"n":"Catch vs Punch Decision Under Pressure","dur":8,"desc":"Cross delivered with one attacker and one defender both approaching. GK must decide in the air: commit to catch or punch firmly with two fists. Rotate challenge level.","cat":"Crosses & High Balls","reps":"4 x 10 crosses each GK","eq":["Balls","GK Gloves"],"cp":"Make the call at the moment of jump \u2014 not mid-air hesitation","int":"High"},{"n":"Box Communication Mastery","dur":10,"desc":"Coach delivers 10 corners. GK must organize 4 defenders before each kick. Scored on: positions organized (1pt), clear calls (1pt), ball outcome (1pt). Max 3pts per corner.","cat":"Communication","reps":"10 corners each GK scored","eq":["Balls"],"cp":"You are managing people \u2014 be clear, direct, calm","int":"Low"},{"n":"Switching Crossing Zones","dur":8,"desc":"First cross from right at 10m. Next immediately from left at 20m. Next from right at 30m. GK must micro-adjust position for each. Tests range and footwork over full width.","cat":"Crosses & High Balls","reps":"4 x 8 cross sequences","eq":["Balls","GK Gloves"],"cp":"Read the crosser's body before ball is struck \u2014 start moving early","int":"Medium"}]},{"name":"W10 Thursday \u2014 Distribution Refresh + GK2/GK3 Focus","focus":"Distribution","week":10,"day":"Thursday","phase":"Mid-Season","wf":"Crossing & Aerial Refresh","drills":[{"n":"GK2 & GK3 Full Distribution Session","dur":20,"desc":"Starter gets light maintenance. GK2 and GK3 each get 20 minutes dedicated distribution: 10 goal kicks, 8 half-volleys, 8 throws, 4 rolling restarts. Full coaching attention.","cat":"Distribution","reps":"20 min each GK2 & GK3","eq":["Balls","GK Gloves"],"cp":"Depth matters \u2014 GK2 and GK3 must be ready on any given day","int":"Medium"},{"n":"Press-Resistance Game (All 3)","dur":6,"desc":"4v4 + GK build-out game. Pressing team earns 1pt if they win ball before halfway line. GK must play through press accurately. Competitive scoring.","cat":"Playing Out From Back","reps":"3 x 8-minute games","eq":["Balls"],"cp":"Pressure reveals habits \u2014 work on the right ones here","int":"Medium"}]},{"name":"W10 Friday \u2014 Pre-Match Activation","focus":"Recovery","week":10,"day":"Friday","phase":"Mid-Season","wf":"Crossing & Aerial Refresh","drills":[{"n":"Match-Day Warm-Up + Opponent Reminder","dur":30,"desc":"Full 25-minute routine. Final 5 minutes: verbal walkthrough of opponent set-piece tendencies. GK restates what they'll do on corners, free kicks.","cat":"Recovery","reps":"30 minutes","eq":["Balls","GK Gloves"],"cp":"Confidence comes from preparation \u2014 remind yourself you're ready","int":"Low"}]},{"name":"W11 Monday \u2014 Debrief + Mental Recovery","focus":"Recovery","week":11,"day":"Monday","phase":"Mid-Season","wf":"Reflexes & Reaction Focus","drills":[{"n":"Film Review + Breathing Reset","dur":30,"desc":"10 minutes: review 2\u20133 key clips from weekend. 10 minutes: guided box breathing (4-4-4-4 count). 10 minutes: positive affirmation journaling by each GK.","cat":"Mental / Decision Making","reps":"30 minutes","eq":["Balls","GK Gloves"],"cp":"Mental recovery is physical recovery \u2014 take this seriously","int":"Low"}]},{"name":"W11 Tuesday \u2014 Reflex Training \u2014 Close Range & Rapid Fire","focus":"Shot Stopping","week":11,"day":"Tuesday","phase":"Mid-Season","wf":"Reflexes & Reaction Focus","drills":[{"n":"Tennis Ball Reaction Drops (No Warning)","dur":8,"desc":"GK faces away. Two tennis balls held at shoulder height. GK spins on whistle \u2014 coach drops one ball randomly. GK catches before second bounce. No verbal cue. React only to visual.","cat":"Shot Stopping","reps":"4 x 10 drops each GK","eq":["Balls","Tennis Balls"],"cp":"Drive explosively to ball; first step is everything","int":"High"},{"n":"Rebounder 3m Rapid Fire","dur":6,"desc":"GK stands 3m from rebounder. Coach fires drives from 2m away. Ball bounces back at unpredictable angle \u2014 GK saves. 6 balls in sequence. 3 sets.","cat":"Shot Stopping","reps":"3 x 6-ball sets each GK","eq":["Rebounder","Balls"],"cp":"Stay in the moment \u2014 each ball is a new save; short memory","int":"High"},{"n":"Three-Server Layered Rapid Fire","dur":8,"desc":"Three coaches/players at different angles (left, central, right) each with a ball. GK saves one \u2014 immediately turns to serve from next server. Rotates clockwise. No rest between 3-ball sets.","cat":"Shot Stopping","reps":"4 x 9-ball (3 per server) sets","eq":["Balls"],"cp":"Find the ball fast; communicate direction to yourself","int":"High"},{"n":"Screen Save + Reflex Finish","dur":8,"desc":"Two players screen GK at 6m. Third player shoots from 20m \u2014 ball passes between screens. GK has <0.5 seconds of sight. Trains late reaction.","cat":"Shot Stopping","reps":"4 x 8 screened shots","eq":["Balls"],"cp":"Stay behind the line of the shooter, not the screen; pick ball up at edge of screen","int":"High"}]},{"name":"W11 Thursday \u2014 Penalty & 1v1 Mastery","focus":"1v1 Situations","week":11,"day":"Thursday","phase":"Mid-Season","wf":"Reflexes & Reaction Focus","drills":[{"n":"Structured Penalty Routine Practice","dur":10,"desc":"Each GK faces 6 penalties from 3 different shooters. GK must execute full pre-kick routine: stance, focal point, breath. No guessing \u2014 pure reaction. Record in penalty chart.","cat":"Set Pieces","reps":"6 penalties per GK","eq":["Balls","GK Gloves"],"cp":"Routine removes fear \u2014 execute it exactly the same every time","int":"Low"},{"n":"1v1 From Different Angles","dur":10,"desc":"6 1v1 runs: one straight on, one from left 45\u00b0, one from right 45\u00b0, one from wide left, one from wide right, one after a pass from deep. GK must adjust position for each angle.","cat":"1v1 Situations","reps":"6 runs each GK","eq":["Balls","GK Gloves"],"cp":"Different angle = different optimum position; adjust before they shoot","int":"Low"},{"n":"Full Penalty Shootout Simulation","dur":10,"desc":"5 penalties each GK vs live shooters. Scoreboard kept. First GK to save 2 wins. Real competition, real pressure.","cat":"Set Pieces","reps":"5 penalties per GK in shootout","eq":["Balls","GK Gloves"],"cp":"Embrace the pressure \u2014 this is what playoffs feel like; own it","int":"Low"}]},{"name":"W11 Friday \u2014 Pre-Match Activation","focus":"Recovery","week":11,"day":"Friday","phase":"Mid-Season","wf":"Reflexes & Reaction Focus","drills":[{"n":"Activation + Driven Saves + Crosses","dur":25,"desc":"25-minute match-day routine. Focus on crisp hands and aggressive crossing claims.","cat":"Crosses & High Balls","reps":"25 minutes","eq":["Balls","GK Gloves"],"cp":"Arrive sharp \u2014 save the energy for the match","int":"Low"}]},{"name":"W12 Monday \u2014 Starter Active Recovery","focus":"Recovery","week":12,"day":"Monday","phase":"Mid-Season","wf":"Backup GK Development Week","drills":[{"n":"Starter Mobility + Mental Wellness","dur":30,"desc":"Starter GK: 20-minute full mobility circuit self-led. Then 10 minutes 1-on-1 with coach: how are you feeling? Physically? Mentally? Season so far?","cat":"Recovery","reps":"30 minutes","eq":["Balls","GK Gloves"],"cp":"Check in \u2014 a tired GK who doesn't talk is a risk; an honest one is a strength","int":"Low"}]},{"name":"W12 Tuesday \u2014 GK2 & GK3 \u2014 Full Development Session","focus":"Shot Stopping","week":12,"day":"Tuesday","phase":"Mid-Season","wf":"Backup GK Development Week","drills":[{"n":"GK2 Full Shot-Stopping Set","dur":25,"desc":"25 minutes dedicated: 10 low saves, 6 diving saves, 6 reaction saves, 3 aerial/reflex combos. Full coaching focus on GK2 only.","cat":"Shot Stopping","reps":"25 min GK2","eq":["Balls","GK Gloves"],"cp":"Give everything \u2014 your moment may come any game","int":"Medium"},{"n":"GK3 Crossing & Aerial Session","dur":20,"desc":"20 minutes: 10 crosses (5 each side), 4 corner claims, 4 punch decisions, 2 corner organization scenarios.","cat":"Crosses & High Balls","reps":"20 min GK3","eq":["Balls","GK Gloves"],"cp":"Build your strengths as a backup \u2014 be the specialist in something","int":"Medium"},{"n":"Combined Competitive Drill \u2014 All 3","dur":10,"desc":"3-player rotation: fastest to make 5 clean claims (catches or directed punches) wins. Pressure from crossers. Competitive scoring.","cat":"Shot Stopping","reps":"3 rounds of 5 claims each","eq":["Balls","GK Gloves"],"cp":"Competition between teammates makes everyone better","int":"Medium"}]},{"name":"W12 Thursday \u2014 All 3 GKs \u2014 Competitive Joint Session","focus":"Mental / Decision Making","week":12,"day":"Thursday","phase":"Mid-Season","wf":"Backup GK Development Week","drills":[{"n":"Reaction Save Competition","dur":10,"desc":"Each GK faces 8 rapid-fire balls. Score: clean save=1pt, deflect wide=0.5pt, concede=0pt. Scores recorded on whiteboard. Winner gets bragging rights.","cat":"Shot Stopping","reps":"8 shots each GK scored","eq":["Balls"],"cp":"Healthy competition \u2014 build the culture of high standards","int":"High"},{"n":"Crossing Competition (10 Crosses Each)","dur":10,"desc":"10 crosses per GK \u2014 5 left, 5 right. Scored: clean catch=2, good punch=1, bad punch=0, concede=-1. Results on board.","cat":"Crosses & High Balls","reps":"10 crosses each GK scored","eq":["Balls","GK Gloves"],"cp":"Quality decisions, not just physical outcomes","int":"High"},{"n":"Friendly Penalty Shootout \u2014 Team Format","dur":10,"desc":"GKs team up: GK1 faces team A, GK2 faces team B, GK3 rotates. 5 penalties each round. All GKs save results combined into team score.","cat":"Set Pieces","reps":"5 penalties each GK","eq":["Balls","GK Gloves"],"cp":"We compete together \u2014 team mentality in the shootout","int":"High"}]},{"name":"W12 Friday \u2014 Pre-Match","focus":"Mental / Decision Making","week":12,"day":"Friday","phase":"Mid-Season","wf":"Backup GK Development Week","drills":[{"n":"Full Match-Day Warm-Up (All 3)","dur":25,"desc":"Full routine for all 3 GKs \u2014 all are prepared, all are ready. GK2 and GK3 get full warm-up alongside starter.","cat":"Recovery","reps":"25 minutes","eq":["Balls","GK Gloves"],"cp":"Everyone on this staff is match-ready. That's the standard.","int":"Medium"}]},{"name":"W13 Monday \u2014 Explosive Power + Plyometric Conditioning","focus":"Physical Conditioning","week":13,"day":"Monday","phase":"Late Season","wf":"Final Conditioning Push","drills":[{"n":"GK-Specific Plyometric Circuit","dur":10,"desc":"Circuit of 4: (1) Box jumps x8, (2) Lateral bounds x8 each side, (3) Squat jump + clap x8, (4) Explosive push-up (for upper body explosive power) x8. 90-second rest between circuits.","cat":"Physical Conditioning","reps":"4 circuits","eq":["Hurdles"],"cp":"Maximum effort each rep; this is about training fast-twitch explosiveness","int":"High"},{"n":"Post-Plyo Dive Save","dur":8,"desc":"Immediately after last plyometric exercise, GK faces a shot. Elevation + saved. GK must produce quality save while heart rate is high.","cat":"Shot Stopping","reps":"4 x 3 post-plyo saves","eq":["Balls","GK Gloves"],"cp":"Technique holds under fatigue \u2014 that's what late in game requires","int":"High"},{"n":"Sprint Recovery Sequences","dur":8,"desc":"GK sprints 20m, walks back \u2014 faces immediate shot on return. 8 repetitions. Simulate GK who has swept ball and must face follow-up.","cat":"Physical Conditioning","reps":"4 x 8 sprint-saves","eq":["Balls"],"cp":"Control breathing in last 3 steps before save; arrive set","int":"Low"}]},{"name":"W13 Tuesday \u2014 Full Technical Session \u2014 All Core Areas","focus":"Shot Stopping","week":13,"day":"Tuesday","phase":"Late Season","wf":"Final Conditioning Push","drills":[{"n":"Shot-Stopping Full Variety (20 shots)","dur":10,"desc":"20 shots in sequence: 5 driven low, 5 curling, 5 volleys, 5 headers deflected. All from game positions. Full quality expected.","cat":"Shot Stopping","reps":"20 shots each GK","eq":["Balls","GK Gloves"],"cp":"Treat each one like it's the final \u2014 full focus on every ball","int":"Medium"},{"n":"Crossing Under Physical Fatigue","dur":8,"desc":"GK runs 10m sprint, claims cross immediately. No recovery time between sprint and cross delivery. 8 sequences.","cat":"Crosses & High Balls","reps":"4 x 8 sequences","eq":["Balls","GK Gloves"],"cp":"Don't let legs affect the claim \u2014 hands and eyes are independent","int":"Medium"},{"n":"Distribution After Exertion","dur":8,"desc":"GK completes 30-second shuttle sprint, immediately distributes ball to target 35m away under time pressure (3 seconds).","cat":"Distribution","reps":"4 x 6 distributions","eq":["Balls"],"cp":"Breathe out on the kick; technique holds when mind is calm","int":"Medium"}]},{"name":"W13 Thursday \u2014 Opponent Analysis & Specific Simulation","focus":"Mental / Decision Making","week":13,"day":"Thursday","phase":"Late Season","wf":"Final Conditioning Push","drills":[{"n":"Opponent Striker Full Simulation","dur":10,"desc":"Coach has scouted next 2 opponents. Run 15 simulated finishes matching each opponent's top striker tendencies \u2014 body shape, preferred foot, typical areas. GK gets verbal scouting briefing first.","cat":"Mental / Decision Making","reps":"15 shots per opponent","eq":["Balls","GK Gloves"],"cp":"You have seen this before \u2014 trust the preparation","int":"High"},{"n":"Opponent Set-Piece Specific","dur":10,"desc":"Walk through and then physically rehearse exactly how next opponent delivers set pieces. 3 corner variations, 2 free kick variations.","cat":"Set Pieces","reps":"5 x 6 reps of each","eq":["Balls","GK Gloves"],"cp":"Specific preparation beats general readiness every time","int":"High"},{"n":"Playoff Scenario Walkthrough","dur":10,"desc":"Discussion: extra time, golden goal, penalty scenarios. Walk through what happens physically and mentally in each. GKs ask questions.","cat":"Mental / Decision Making","reps":"15-minute group session","eq":["Balls","GK Gloves"],"cp":"Talk about it now so it's not scary then","int":"Low"}]},{"name":"W13 Friday \u2014 Pre-Match High-Energy Activation","focus":"Recovery","week":13,"day":"Friday","phase":"Late Season","wf":"Final Conditioning Push","drills":[{"n":"Full Match-Day Routine + High Energy","dur":25,"desc":"Full 25-minute routine. Energy is up this week \u2014 music, competition in warm-up, loud encouragement.","cat":"Mental / Decision Making","reps":"25 minutes","eq":["Balls","GK Gloves"],"cp":"Build the momentum going into late season \u2014 bring energy to training","int":"Low"}]},{"name":"W14 Monday \u2014 Season Reflection + Psychological Preparation","focus":"Communication","week":14,"day":"Monday","phase":"Late Season","wf":"Mental & Leadership Peak","drills":[{"n":"Season Stats Personal Review","dur":15,"desc":"Each GK reviews their personal tracking data from the season: saves, distribution accuracy, crossing success, penalty chart. Coach provides written summary.","cat":"Mental / Decision Making","reps":"15 minutes each GK","eq":["Balls","GK Gloves"],"cp":"Numbers tell one story \u2014 what's the story behind the numbers?","int":"Low"},{"n":"Goal Visualization Exercise","dur":15,"desc":"15-minute guided visualization: GK closes eyes, imagines their best save, best distribution, commanding a corner. Coach narrates slowly. Full sensory \u2014 crowd, ball, body.","cat":"Mental / Decision Making","reps":"15 minutes","eq":["Balls"],"cp":"The brain can't distinguish vividly imagined from real \u2014 use this.","int":"Low"}]},{"name":"W14 Tuesday \u2014 High-Pressure Drills & Distraction Training","focus":"Mental / Decision Making","week":14,"day":"Tuesday","phase":"Late Season","wf":"Mental & Leadership Peak","drills":[{"n":"Noise + Distraction Saves","dur":8,"desc":"While GK prepares to face a shot, coach/players make noise, wave arms near GK's eyeline, call their name mid-preparation. GK must stay focused and save. Simulate hostile crowd.","cat":"Shot Stopping","reps":"4 x 10 shots under distraction","eq":["Balls","GK Gloves"],"cp":"Find your focal point; external chaos means nothing to your technique","int":"High"},{"n":"Pressure Penalty Shootout","dur":6,"desc":"Shootout scenario: team is down in penalties. GK knows they must save the next one to keep team in. Full simulation \u2014 shooter walks from center circle, referee present.","cat":"Set Pieces","reps":"3 x 5-penalty simulations","eq":["Balls","GK Gloves"],"cp":"Routine removes the weight; execute what you've done 100 times","int":"High"},{"n":"Crossing in Chaotic Box","dur":6,"desc":"Cross delivered with 5 players (3 attackers, 2 defenders) crammed in box. GK must call, navigate through bodies, and claim or punch decisively.","cat":"Crosses & High Balls","reps":"3 x 10 crosses in full box","eq":["Balls","GK Gloves"],"cp":"Lead with voice before lead with body \u2014 call 'keeper' then GO","int":"High"}]},{"name":"W14 Thursday \u2014 GK Leadership on the Field","focus":"Communication","week":14,"day":"Thursday","phase":"Late Season","wf":"Mental & Leadership Peak","drills":[{"n":"GK-Led Back Line Drill","dur":10,"desc":"GK leads 4 defenders through 10 minutes of coordinated movement: step up, drop, shift, set. No coach direction \u2014 GK gives all commands. Assessed on quality and confidence of leadership.","cat":"Shot Stopping","reps":"10 minutes led by each GK (30 min total)","eq":["Balls","GK Gloves"],"cp":"You own the backline \u2014 your voice is the first thing they hear and the last","int":"Medium"},{"n":"Communication Under Fatigue","dur":8,"desc":"GK completes 2-minute shuttle run, then must organize back 4 for 2 minutes of game play. Voice quality assessed under physical fatigue.","cat":"Communication","reps":"4 x 2-min fatigue communication sets","eq":["Balls","GK Gloves"],"cp":"Leaders communicate when it's hard, not just when it's easy","int":"Medium"},{"n":"Switchplay + Recovery Calls","dur":8,"desc":"Ball switched side quickly. GK must call the switch early ('play left!' or 'switch it!'), then readjust body position for new angle of attack.","cat":"Communication","reps":"4 x 8 switchplay scenarios","eq":["Balls"],"cp":"See it before it happens \u2014 anticipation is the GK's superpower","int":"Low"}]},{"name":"W14 Friday \u2014 Playoff Full Simulation","focus":"Mental / Decision Making","week":14,"day":"Friday","phase":"Late Season","wf":"Mental & Leadership Peak","drills":[{"n":"120-Minute Match Simulation (Split Across GKs)","dur":90,"desc":"Full game run as if it's a playoff: two 45-minute halves + 2x15 extra time periods. GK1 plays first 45+15. GK2 plays second 45+15. Full team intensity.","cat":"Crosses & High Balls","reps":"90 minutes game + 30 extra time","eq":["Balls","GK Gloves"],"cp":"Observe: mental endurance, decision quality in extra time, noise of voice late on","int":"High"},{"n":"Penalty Shootout at End of Sim","dur":10,"desc":"After extra time simulation, run a full penalty shootout \u2014 5 penalties each team. GK faces full shootout under simulated exhaustion.","cat":"Set Pieces","reps":"Full shootout","eq":["Balls","GK Gloves"],"cp":"This is the hardest moment \u2014 you've practiced for it. Trust that.","int":"High"},{"n":"Mental Reset Debrief","dur":10,"desc":"5-minute sit-down. Breathe. Short debrief: how did you handle the pressure? What do you take into playoffs? Not about errors \u2014 about resilience.","cat":"Mental / Decision Making","reps":"10 minutes","eq":["Balls","GK Gloves"],"cp":"Finish the session strong in your head \u2014 that's what carries over","int":"Low"}]},{"name":"W15 Monday \u2014 Light Recovery","focus":"Recovery","week":15,"day":"Monday","phase":"Late Season","wf":"Fine-Tuning & Taper","drills":[{"n":"Mobility & Stretch","dur":20,"desc":"Full body static and dynamic stretch. Coach-led, slow pace.","cat":"Recovery","reps":"20 minutes","eq":["Balls","GK Gloves"],"cp":"Freshen the body \u2014 the work is done; now recover","int":"Low"},{"n":"Ball Mastery Light","dur":15,"desc":"15 minutes free play with ball. Pairs catching, juggling, rolling.","cat":"Mental / Decision Making","reps":"15 minutes","eq":["Balls"],"cp":"Keep the feel \u2014 stay connected to the ball without any strain","int":"Low"}]},{"name":"W15 Tuesday \u2014 Strength-Building Session (Each GK's Best Skills)","focus":"Distribution","week":15,"day":"Tuesday","phase":"Late Season","wf":"Fine-Tuning & Taper","drills":[{"n":"Best-Of Individual Drills","dur":25,"desc":"Each GK nominates their 2 strongest skills. Coach designs 25 minutes around those skills only. High success rate intentional \u2014 ends week feeling excellent.","cat":"Mental / Decision Making","reps":"25 min per GK","eq":["Balls","GK Gloves"],"cp":"This is for confidence \u2014 reinforce what you do best heading into playoffs","int":"Medium"},{"n":"Rebounder Flow Drill","dur":6,"desc":"GK hits rebounder 10 times \u2014 varying height and angle each rep. Save each rebound cleanly. Fluid, rhythm-focused. Not fast, not competitive \u2014 smooth.","cat":"Shot Stopping","reps":"3 x 10 rebounder flows","eq":["Rebounder"],"cp":"Find your rhythm; slow is smooth, smooth is fast","int":"Medium"}]},{"name":"W15 Thursday \u2014 Final Technical Work + Set Piece Review","focus":"Set Pieces","week":15,"day":"Thursday","phase":"Late Season","wf":"Fine-Tuning & Taper","drills":[{"n":"Playoff Set-Piece Final Walkthrough","dur":10,"desc":"Walk through all set-piece plans \u2014 corners, free kicks, penalties \u2014 one final time. Physical rehearsal, not just discussion.","cat":"Set Pieces","reps":"3 x each scenario","eq":["Balls","GK Gloves"],"cp":"Repetition is confidence. You've done this hundreds of times.","int":"Low"},{"n":"1v1 Confidence Reps","dur":10,"desc":"6 1v1 runs \u2014 each scripted so GK makes the save. Structured for success. End each GK's session on a save.","cat":"1v1 Situations","reps":"6 success reps each GK","eq":["Balls","GK Gloves"],"cp":"Go into playoffs with the last thing you did being a save \u2014 not a concede","int":"Low"}]},{"name":"W15 Friday \u2014 Pre-Match Activation","focus":"Recovery","week":15,"day":"Friday","phase":"Late Season","wf":"Fine-Tuning & Taper","drills":[{"n":"Match-Day Routine + Reset Talk","dur":30,"desc":"Full routine. Final 5 minutes: coach gives each GK one personal message \u2014 one thing they've done brilliantly this season.","cat":"Mental / Decision Making","reps":"30 minutes","eq":["Balls","GK Gloves"],"cp":"Send them into the match with their head high","int":"Low"}]},{"name":"W16 Monday \u2014 Recovery + Positive Review","focus":"Recovery","week":16,"day":"Monday","phase":"Late Season","wf":"Final Regular Season Week","drills":[{"n":"Activation Only","dur":20,"desc":"20 minutes light movement and ball touches.","cat":"Shot Stopping","reps":"20 minutes","eq":["Balls"],"cp":"Freshen \u2014 nothing more","int":"Low"},{"n":"Video Highlights \u2014 Positive Only","dur":10,"desc":"Coach curates 10-minute highlight reel of great saves, great distribution, great leadership moments from the season. Watch together.","cat":"Mental / Decision Making","reps":"10 minutes","eq":["Balls","GK Gloves"],"cp":"This is your season \u2014 look at what you've built","int":"Low"}]},{"name":"W16 Tuesday \u2014 Confidence Session \u2014 High Success Rate","focus":"Mental / Decision Making","week":16,"day":"Tuesday","phase":"Late Season","wf":"Final Regular Season Week","drills":[{"n":"High-Success Shot Sequence","dur":10,"desc":"Shots designed for GK to save: moderate pace, central, predictable. GK makes every one. Session ends on run of 10 consecutive saves.","cat":"Shot Stopping","reps":"30 saves per GK","eq":["Balls","GK Gloves"],"cp":"Feel good \u2014 feel sharp \u2014 feel ready","int":"Medium"},{"n":"Crosses: Easy Clean Claims","dur":10,"desc":"Crosses delivered without pressure \u2014 central, catchable, no striker. GK claims every one cleanly.","cat":"Crosses & High Balls","reps":"15 crosses per GK","eq":["Balls","GK Gloves"],"cp":"Clean technique; call every ball; feel the confidence","int":"Medium"}]},{"name":"W16 Thursday \u2014 Playoff Preview","focus":"Mental / Decision Making","week":16,"day":"Thursday","phase":"Late Season","wf":"Final Regular Season Week","drills":[{"n":"Playoff Opponent Scouting Session","dur":20,"desc":"Coach presents scouting of potential first playoff opponent (if known). GKs review striker patterns, set-piece tendencies. Group discussion.","cat":"Mental / Decision Making","reps":"20 minutes","eq":["Balls","GK Gloves"],"cp":"Information is power \u2014 absorb it, trust it, use it","int":"Low"},{"n":"Set-Piece Specifics","dur":10,"desc":"Final physical rehearsal of corner and free kick positioning.","cat":"Set Pieces","reps":"10 minutes","eq":["Balls","GK Gloves"],"cp":"Muscle memory is set \u2014 one last reinforcement","int":"Low"},{"n":"Penalty Chart Final Review","dur":10,"desc":"Each GK reviews their full season penalty chart \u2014 16 weeks of data. Coach helps identify patterns in opponent shooters.","cat":"Set Pieces","reps":"10 min per GK","eq":["Balls","GK Gloves"],"cp":"This data is a weapon. You are the most prepared GK they'll face.","int":"Low"}]},{"name":"W16 Friday \u2014 Pre-Playoff Activation","focus":"Recovery","week":16,"day":"Friday","phase":"Late Season","wf":"Final Regular Season Week","drills":[{"n":"Full Team Pre-Match Warm-Up","dur":25,"desc":"All 3 GKs warm up together as part of full team. Energy is high. Routine is perfect. Coach observation only \u2014 no instruction needed.","cat":"Recovery","reps":"25 minutes","eq":["Balls","GK Gloves"],"cp":"Trust the process. Trust the preparation. You are ready.","int":"Low"},{"n":"Final Mental Imagery Session","dur":10,"desc":"10 minutes: guided imagery. Each GK imagines their best playoff performance \u2014 a crucial save, a penalty saved, a cross claimed in the 90th minute.","cat":"Mental / Decision Making","reps":"10 minutes","eq":["Balls","GK Gloves"],"cp":"See it. Feel it. Know it is possible \u2014 because you've done the work.","int":"Low"}]},{"name":"WPO-1 Day +1 \u2014 Active Recovery","focus":"Recovery","week":"PO-1","day":"Day +1","phase":"Playoffs","wf":"Day After Match \u2014 Recovery Protocol","drills":[{"n":"Light Jog + Dynamic Stretch","dur":25,"desc":"15-minute jog at 50% effort. Follow with 10-minute dynamic mobility sequence: hip circles, leg swings, thoracic rotations, shoulder sweeps. Self-led.","cat":"Recovery","reps":"25 minutes","eq":["Balls","GK Gloves"],"cp":"Move the body \u2014 don't rest completely; blood flow speeds recovery","int":"Low"},{"n":"Ice Bath / Contrast Therapy","dur":25,"desc":"If facilities allow: 10 min cold water (10\u201315\u00b0C), 5 min warm, 10 min cold. Otherwise: cold packs on legs + warm towel on upper body alternating.","cat":"Recovery","reps":"25 minutes","eq":["Balls","GK Gloves"],"cp":"This is not optional in playoffs \u2014 recovery is the job today","int":"Low"},{"n":"Video Review \u2014 Brief & Positive","dur":10,"desc":"3 clips maximum: 1 great save, 1 moment of leadership, 1 distribution trigger. Watch together. Brief comment only \u2014 no deep analysis.","cat":"Mental / Decision Making","reps":"10 minutes","eq":["Balls","GK Gloves"],"cp":"Positive reinforcement; the mistakes are being filed \u2014 not re-lived","int":"Low"},{"n":"Psychological Debrief (1-on-1)","dur":10,"desc":"Each GK gets 10 minutes with coach: How are you feeling? What moment are you most proud of? What's one thing you'll do differently? No pressure. Honest conversation.","cat":"Mental / Decision Making","reps":"10 min per GK","eq":["Balls","GK Gloves"],"cp":"The GK who talks is the GK who heals faster \u2014 create that space","int":"Low"}]},{"name":"WPO-2 Day -2 \u2014 Focused Preparation","focus":"Shot Stopping","week":"PO-2","day":"Day -2","phase":"Playoffs","wf":"2 Days Before Match \u2014 Specific Preparation","drills":[{"n":"Opponent Striker Full Simulation","dur":10,"desc":"Coach runs 15 simulated finishes matching opponent striker's exact tendencies \u2014 foot, position, run pattern. GK has full scouting report briefed beforehand.","cat":"Mental / Decision Making","reps":"15 simulated shots","eq":["Balls","GK Gloves"],"cp":"This is not new \u2014 you've seen this in the scout; execute the plan","int":"High"},{"n":"Opponent Set-Piece Rehearsal","dur":10,"desc":"Run opponent's 3 corner variations and 2 free kick patterns exactly as scouted. GK organizes defenders specifically.","cat":"Set Pieces","reps":"5 reps x each variation","eq":["Balls","GK Gloves"],"cp":"Physical rehearsal locks the memory \u2014 one more time does matter","int":"Medium"},{"n":"Distribution Patterns (Game Plan)","dur":10,"desc":"Practice the specific distribution patterns that work against this opponent's press. Short if they press high. Long if they sit deep. Exactly as game-planned.","cat":"Distribution","reps":"10 minutes","eq":["Balls","GK Gloves"],"cp":"Execute the plan, not what feels natural \u2014 the plan is tested","int":"Medium"},{"n":"Penalty Game Plan Rehearsal","dur":10,"desc":"Review penalty chart for this opponent's shooters (if available). GK practices diving to pre-identified corners based on shooter patterns. 5 penalties each GK.","cat":"Set Pieces","reps":"5 penalties per GK","eq":["Balls","GK Gloves"],"cp":"Data-informed decisions in a shootout = massive edge. Trust the chart.","int":"Medium"}]},{"name":"WPO-3 Day -1 \u2014 Match-Day-Minus-1 Activation","focus":"Recovery","week":"PO-3","day":"Day -1","phase":"Playoffs","wf":"Day Before Match \u2014 Activation","drills":[{"n":"Footwork + Angles (Light)","dur":10,"desc":"10 minutes of footwork ladder and angle-setting. Slow, deliberate. No competition, no speed. Reinforce the motor patterns.","cat":"Positioning","reps":"10 minutes","eq":["Agility Ladder"],"cp":"Groove the patterns \u2014 don't train them; feel is everything today","int":"Low"},{"n":"Sharp Save Sequences","dur":10,"desc":"15 shots \u2014 varied but comfortable. All within GK's comfort zone. End on a great save.","cat":"Shot Stopping","reps":"15 saves","eq":["Balls","GK Gloves"],"cp":"Feel sharp \u2014 the goal is confidence, not conditioning","int":"Low"},{"n":"Crossing Claims (High Success Rate)","dur":10,"desc":"10 crosses \u2014 no pressure, catchable, clear air. GK claims every one cleanly. Call every ball.","cat":"Crosses & High Balls","reps":"10 crosses","eq":["Balls"],"cp":"Leave today feeling great about your hands and your voice","int":"Low"},{"n":"Visualization + Pre-Match Talk","dur":10,"desc":"10-minute individual or group visualization. Coach narrates: the match starts, the first cross comes, the first save is made. End with team meeting \u2014 brief, energized.","cat":"Mental / Decision Making","reps":"10 minutes","eq":["Balls","GK Gloves"],"cp":"You have done the work. All of it. Now let it play out through you.","int":"Low"}]},{"name":"WPO-4 Season-Long \u2014 Penalty Shootout Game Plan","focus":"Set Pieces","week":"PO-4","day":"Season-Long","phase":"Playoffs","wf":"Penalty Shootout System \u2014 Full Season Protocol","drills":[{"n":"Individual Penalty Chart (Ongoing)","dur":10,"desc":"From Week 1: every penalty faced in training or match is logged. Columns: shooter name, foot, run-up angle, placement (9-zone grid), eye contact behavior, feint used. Chart stored per GK.","cat":"Set Pieces","reps":"Ongoing \u2014 every penalty","eq":["Balls","GK Gloves"],"cp":"Patterns emerge after 10 penalties; by Week 16 you have a blueprint","int":"High"},{"n":"Weekly Penalty Practice (5+ per GK)","dur":10,"desc":"Minimum 5 competitive penalties each GK per week. Rotated shooter identities. Shot from 11 yards. GK must stay on line, react only \u2014 no guessing except when chart confirms a pattern.","cat":"Set Pieces","reps":"5+ penalties per GK per week","eq":["Balls","GK Gloves"],"cp":"Discipline in training = composure in games; no guessing without data","int":"High"},{"n":"Pre-Kick Routine Rehearsal","dur":3,"desc":"GK selects and rehearses a 4-step pre-kick routine: (1) take one step back off line, (2) wipe hands on shorts, (3) deep exhale, (4) fix eyes on shooter's hip. Same every single time.","cat":"Distribution","reps":"3 minutes every Thursday","eq":["Balls","GK Gloves"],"cp":"Routine removes the fear; execute the process, ignore the outcome","int":"High"},{"n":"Ice-Water Mentality Simulation","dur":10,"desc":"Before taking a routine save, coach says 'this is a playoff shootout penalty \u2014 the game ends if you concede.' GK must execute normally. Trains disconnecting pressure from performance.","cat":"Recovery","reps":"Weekly \u2014 3 simulated high-pressure penalties","eq":["Balls","GK Gloves"],"cp":"Pressure is a privilege \u2014 it means the moment matters; perform your routine","int":"Low"}]}];
 
 function expandRaw(raw) {
-  return raw.map((session) => ({
+  return raw.map(s => ({
     id: uid(),
-    name: session.name,
-    focus: session.focus,
-    totalDuration: session.drills.reduce((acc, drill) => acc + drill.dur, 0),
-    week: session.week,
-    day: session.day,
-    phase: session.phase,
-    weekFocus: session.wf,
-    drills: session.drills.map((drill) => ({
-      id: uid(),
-      name: drill.n,
-      duration: drill.dur,
-      description: drill.desc,
-      category: drill.cat,
-      sets: "",
-      reps: drill.reps,
-      equipment: drill.eq,
-      coachingPoints: drill.cp,
-      intensity: drill.int,
-      playerCount: "3",
-      progressions: "",
-      commonMistakes: "",
-      notes: "",
+    name: s.name,
+    focus: s.focus,
+    totalDuration: s.drills.reduce((a, d) => a + d.dur, 0),
+    week: s.week,
+    day: s.day,
+    phase: s.phase,
+    weekFocus: s.wf,
+    drills: s.drills.map(d => ({
+      id: uid(), name: d.n, duration: d.dur, description: d.desc,
+      category: d.cat, sets: "", reps: d.reps, equipment: d.eq,
+      coachingPoints: d.cp, intensity: d.int, playerCount: "3",
+      progressions: "", commonMistakes: "", notes: "",
     })),
   }));
 }
 
 const PHASES = [
-  { num: 1, name: "Pre-Season", weeks: "1-4", color: "#2563eb", bg: "#dbeafe" },
-  { num: 2, name: "Early Season", weeks: "5-8", color: "#7c3aed", bg: "#ede9fe" },
-  { num: 3, name: "Mid-Season", weeks: "9-12", color: "#0891b2", bg: "#cffafe" },
-  { num: 4, name: "Late Season", weeks: "13-16", color: "#ea580c", bg: "#ffedd5" },
+  { num: 1, name: "Pre-Season", weeks: "1\u20134", color: "#2563eb", bg: "#dbeafe" },
+  { num: 2, name: "Early Season", weeks: "5\u20138", color: "#7c3aed", bg: "#ede9fe" },
+  { num: 3, name: "Mid-Season", weeks: "9\u201312", color: "#0891b2", bg: "#cffafe" },
+  { num: 4, name: "Late Season", weeks: "13\u201316", color: "#ea580c", bg: "#ffedd5" },
   { num: 5, name: "Playoffs", weeks: "17+", color: "#dc2626", bg: "#fee2e2" },
 ];
 
 const colors = {
-  bg: "#f8f7f4",
-  card: "#ffffff",
-  border: "#e2e0db",
-  text: "#1a1a1a",
-  textMuted: "#6b6966",
-  accent: "#2563eb",
-  accentLight: "#dbeafe",
-  danger: "#dc2626",
-  dangerLight: "#fee2e2",
-  success: "#16a34a",
-  successLight: "#dcfce7",
-  warmLight: "#fef3c7",
-  intensityLow: "#86efac",
-  intensityMed: "#fde047",
-  intensityHigh: "#fb923c",
-  intensityMax: "#ef4444",
+  bg: "#f8f7f4", card: "#ffffff", border: "#e2e0db", text: "#1a1a1a",
+  textMuted: "#6b6966", accent: "#2563eb", accentLight: "#dbeafe",
+  danger: "#dc2626", dangerLight: "#fee2e2", success: "#16a34a",
+  successLight: "#dcfce7", warmLight: "#fef3c7",
+  intensityLow: "#86efac", intensityMed: "#fde047", intensityHigh: "#fb923c", intensityMax: "#ef4444",
 };
-
-const intensityColor = (value) =>
-  (
-    {
-      Low: colors.intensityLow,
-      Medium: colors.intensityMed,
-      High: colors.intensityHigh,
-      Max: colors.intensityMax,
-    }[value] || "#ccc"
-  );
+const intensityColor = (i) => ({ Low: colors.intensityLow, Medium: colors.intensityMed, High: colors.intensityHigh, Max: colors.intensityMax }[i] || "#ccc");
 
 function Badge({ children, color = colors.accentLight, textColor = colors.accent, style }) {
-  return (
-    <span
-      style={{
-        display: "inline-block",
-        padding: "2px 10px",
-        borderRadius: 4,
-        fontSize: 12,
-        fontWeight: 600,
-        background: color,
-        color: textColor,
-        letterSpacing: 0.3,
-        ...style,
-      }}
-    >
-      {children}
-    </span>
-  );
+  return <span style={{ display: "inline-block", padding: "2px 10px", borderRadius: 4, fontSize: 12, fontWeight: 600, background: color, color: textColor, letterSpacing: 0.3, ...style }}>{children}</span>;
 }
-
 function Button({ children, onClick, variant = "primary", size = "md", style, disabled }) {
-  const base = {
-    border: "none",
-    cursor: disabled ? "not-allowed" : "pointer",
-    borderRadius: 6,
-    fontWeight: 600,
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 6,
-    transition: "all 0.15s",
-    opacity: disabled ? 0.5 : 1,
-  };
-
-  const sizes = {
-    sm: { padding: "5px 10px", fontSize: 12 },
-    md: { padding: "8px 16px", fontSize: 13 },
-    lg: { padding: "10px 20px", fontSize: 14 },
-  };
-
+  const base = { border: "none", cursor: disabled ? "not-allowed" : "pointer", borderRadius: 6, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 6, transition: "all 0.15s", opacity: disabled ? 0.5 : 1 };
+  const sizes = { sm: { padding: "5px 10px", fontSize: 12 }, md: { padding: "8px 16px", fontSize: 13 }, lg: { padding: "10px 20px", fontSize: 14 } };
   const variants = {
     primary: { background: colors.accent, color: "#fff" },
-    secondary: {
-      background: colors.bg,
-      color: colors.text,
-      border: `1px solid ${colors.border}`,
-    },
+    secondary: { background: colors.bg, color: colors.text, border: "1px solid " + colors.border },
     danger: { background: colors.dangerLight, color: colors.danger },
     ghost: { background: "transparent", color: colors.textMuted },
   };
-
-  return (
-    <button onClick={onClick} disabled={disabled} style={{ ...base, ...sizes[size], ...variants[variant], ...style }}>
-      {children}
-    </button>
-  );
+  return <button onClick={onClick} disabled={disabled} style={{ ...base, ...sizes[size], ...variants[variant], ...style }}>{children}</button>;
 }
-
 function Input({ label, value, onChange, type = "text", placeholder, style, multiline, rows = 3 }) {
-  const inputStyle = {
-    width: "100%",
-    padding: "8px 10px",
-    border: `1px solid ${colors.border}`,
-    borderRadius: 6,
-    fontSize: 13,
-    fontFamily: "inherit",
-    background: "#fff",
-    color: colors.text,
-    resize: "vertical",
-    boxSizing: "border-box",
-    ...style,
-  };
-
+  const inputStyle = { width: "100%", padding: "8px 10px", border: "1px solid " + colors.border, borderRadius: 6, fontSize: 13, fontFamily: "inherit", background: "#fff", color: colors.text, resize: "vertical", boxSizing: "border-box", ...style };
   return (
     <div style={{ marginBottom: 10 }}>
-      {label ? (
-        <label
-          style={{
-            display: "block",
-            fontSize: 12,
-            fontWeight: 600,
-            color: colors.textMuted,
-            marginBottom: 4,
-            textTransform: "uppercase",
-            letterSpacing: 0.5,
-          }}
-        >
-          {label}
-        </label>
-      ) : null}
-      {multiline ? (
-        <textarea value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} rows={rows} style={inputStyle} />
-      ) : (
-        <input type={type} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} style={inputStyle} />
-      )}
+      {label && <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: colors.textMuted, marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>{label}</label>}
+      {multiline ? <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={rows} style={inputStyle} /> : <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} style={inputStyle} />}
     </div>
   );
 }
-
 function Select({ label, value, onChange, options, style }) {
   return (
     <div style={{ marginBottom: 10 }}>
-      {label ? (
-        <label
-          style={{
-            display: "block",
-            fontSize: 12,
-            fontWeight: 600,
-            color: colors.textMuted,
-            marginBottom: 4,
-            textTransform: "uppercase",
-            letterSpacing: 0.5,
-          }}
-        >
-          {label}
-        </label>
-      ) : null}
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        style={{
-          width: "100%",
-          padding: "8px 10px",
-          border: `1px solid ${colors.border}`,
-          borderRadius: 6,
-          fontSize: 13,
-          background: "#fff",
-          color: colors.text,
-          ...style,
-        }}
-      >
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
+      {label && <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: colors.textMuted, marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>{label}</label>}
+      <select value={value} onChange={e => onChange(e.target.value)} style={{ width: "100%", padding: "8px 10px", border: "1px solid " + colors.border, borderRadius: 6, fontSize: 13, background: "#fff", color: colors.text, ...style }}>{options.map(o => <option key={o} value={o}>{o}</option>)}</select>
     </div>
   );
 }
-
 function MultiSelect({ label, selected = [], options, onChange }) {
-  const toggle = (option) =>
-    onChange(selected.includes(option) ? selected.filter((item) => item !== option) : [...selected, option]);
-
+  const toggle = (opt) => onChange(selected.includes(opt) ? selected.filter(s => s !== opt) : [...selected, opt]);
   return (
     <div style={{ marginBottom: 10 }}>
-      {label ? (
-        <label
-          style={{
-            display: "block",
-            fontSize: 12,
-            fontWeight: 600,
-            color: colors.textMuted,
-            marginBottom: 4,
-            textTransform: "uppercase",
-            letterSpacing: 0.5,
-          }}
-        >
-          {label}
-        </label>
-      ) : null}
+      {label && <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: colors.textMuted, marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>{label}</label>}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-        {options.map((option) => (
-          <button
-            key={option}
-            type="button"
-            onClick={() => toggle(option)}
-            style={{
-              padding: "3px 10px",
-              borderRadius: 4,
-              fontSize: 12,
-              border: `1px solid ${selected.includes(option) ? colors.accent : colors.border}`,
-              background: selected.includes(option) ? colors.accentLight : "#fff",
-              color: selected.includes(option) ? colors.accent : colors.textMuted,
-              cursor: "pointer",
-              fontWeight: selected.includes(option) ? 600 : 400,
-            }}
-          >
-            {option}
-          </button>
-        ))}
+        {options.map(o => <button key={o} type="button" onClick={() => toggle(o)} style={{ padding: "3px 10px", borderRadius: 4, fontSize: 12, border: "1px solid " + (selected.includes(o) ? colors.accent : colors.border), background: selected.includes(o) ? colors.accentLight : "#fff", color: selected.includes(o) ? colors.accent : colors.textMuted, cursor: "pointer", fontWeight: selected.includes(o) ? 600 : 400 }}>{o}</button>)}
       </div>
     </div>
   );
 }
-
 function Tabs({ tabs, active, onSelect }) {
   return (
-    <div style={{ display: "flex", borderBottom: `2px solid ${colors.border}`, marginBottom: 20, overflowX: "auto" }}>
-      {tabs.map((tab) => (
-        <button
-          key={tab.key}
-          type="button"
-          onClick={() => onSelect(tab.key)}
-          style={{
-            padding: "10px 18px",
-            background: "none",
-            border: "none",
-            borderBottom: active === tab.key ? `2px solid ${colors.accent}` : "2px solid transparent",
-            color: active === tab.key ? colors.accent : colors.textMuted,
-            fontWeight: active === tab.key ? 700 : 500,
-            cursor: "pointer",
-            fontSize: 14,
-            marginBottom: -2,
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            whiteSpace: "nowrap",
-          }}
-        >
-          {tab.icon}
-          {tab.label}
-        </button>
-      ))}
+    <div style={{ display: "flex", borderBottom: "2px solid " + colors.border, marginBottom: 20, gap: 0, overflowX: "auto" }}>
+      {tabs.map(t => <button key={t.key} type="button" onClick={() => onSelect(t.key)} style={{ padding: "10px 18px", background: "none", border: "none", borderBottom: active === t.key ? "2px solid " + colors.accent : "2px solid transparent", color: active === t.key ? colors.accent : colors.textMuted, fontWeight: active === t.key ? 700 : 500, cursor: "pointer", fontSize: 14, marginBottom: -2, display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>{t.icon}{t.label}</button>)}
     </div>
   );
 }
 
 function DrillEditor({ drill, onChange, onDelete, index }) {
   const [open, setOpen] = useState(false);
-  const update = (field, value) => onChange({ ...drill, [field]: value });
-
+  const update = (field, val) => onChange({ ...drill, [field]: val });
   return (
-    <div style={{ border: `1px solid ${colors.border}`, borderRadius: 8, marginBottom: 10, background: colors.card, overflow: "hidden" }}>
-      <div
-        onClick={() => setOpen(!open)}
-        style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", cursor: "pointer", background: open ? colors.bg : colors.card, flexWrap: "wrap" }}
-      >
+    <div style={{ border: "1px solid " + colors.border, borderRadius: 8, marginBottom: 10, background: colors.card, overflow: "hidden" }}>
+      <div onClick={() => setOpen(!open)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", cursor: "pointer", background: open ? colors.bg : colors.card }}>
         <span style={{ color: colors.textMuted, fontSize: 13, fontWeight: 700, minWidth: 24 }}>#{index + 1}</span>
         {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-        <span style={{ fontWeight: 600, flex: 1, fontSize: 14, minWidth: 180 }}>{drill.name || "Unnamed Drill"}</span>
-        <Badge color={`${intensityColor(drill.intensity)}33`} textColor={intensityColor(drill.intensity)} style={{ filter: "saturate(1.5)" }}>
-          {drill.intensity}
-        </Badge>
+        <span style={{ fontWeight: 600, flex: 1, fontSize: 14 }}>{drill.name || "Unnamed Drill"}</span>
+        <Badge color={intensityColor(drill.intensity) + "33"} textColor={intensityColor(drill.intensity)} style={{ filter: "saturate(1.5)" }}>{drill.intensity}</Badge>
         <Badge>{drill.category}</Badge>
-        <span style={{ fontSize: 12, color: colors.textMuted, display: "flex", alignItems: "center", gap: 3 }}>
-          <Clock size={12} />
-          {drill.duration} min
-        </span>
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            onDelete();
-          }}
-          style={{ background: "none", border: "none", cursor: "pointer", color: colors.danger, padding: 4 }}
-        >
-          <Trash2 size={14} />
-        </button>
+        <span style={{ fontSize: 12, color: colors.textMuted, display: "flex", alignItems: "center", gap: 3 }}><Clock size={12} />{drill.duration} min</span>
+        <button type="button" onClick={e => { e.stopPropagation(); onDelete(); }} style={{ background: "none", border: "none", cursor: "pointer", color: colors.danger, padding: 4 }}><Trash2 size={14} /></button>
       </div>
-      {open ? (
-        <div style={{ padding: 16, borderTop: `1px solid ${colors.border}` }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "0 16px" }}>
-            <Input label="Drill Name" value={drill.name} onChange={(value) => update("name", value)} placeholder="e.g. Rapid Fire Low Saves" />
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0 8px" }}>
-              <Input label="Duration (min)" type="number" value={drill.duration} onChange={(value) => update("duration", parseInt(value, 10) || 0)} />
-              <Input label="Sets" value={drill.sets} onChange={(value) => update("sets", value)} placeholder="e.g. 3" />
-              <Input label="Reps" value={drill.reps} onChange={(value) => update("reps", value)} placeholder="e.g. 8" />
+      {open && (
+        <div style={{ padding: "16px", borderTop: "1px solid " + colors.border }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+            <Input label="Drill Name" value={drill.name} onChange={v => update("name", v)} placeholder="e.g. Rapid Fire Low Saves" />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0 8px" }}>
+              <Input label="Duration (min)" type="number" value={drill.duration} onChange={v => update("duration", parseInt(v) || 0)} />
+              <Input label="Sets" value={drill.sets} onChange={v => update("sets", v)} placeholder="e.g. 3" />
+              <Input label="Reps" value={drill.reps} onChange={v => update("reps", v)} placeholder="e.g. 8" />
             </div>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "0 16px" }}>
-            <Select label="Category" value={drill.category} onChange={(value) => update("category", value)} options={SKILL_CATEGORIES} />
-            <Select label="Intensity" value={drill.intensity} onChange={(value) => update("intensity", value)} options={INTENSITY} />
-            <Input label="Player Count" value={drill.playerCount} onChange={(value) => update("playerCount", value)} placeholder="e.g. 2-4" />
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0 16px" }}>
+            <Select label="Category" value={drill.category} onChange={v => update("category", v)} options={SKILL_CATEGORIES} />
+            <Select label="Intensity" value={drill.intensity} onChange={v => update("intensity", v)} options={INTENSITY} />
+            <Input label="Player Count" value={drill.playerCount} onChange={v => update("playerCount", v)} placeholder="e.g. 2-4" />
           </div>
-          <Input label="Description" value={drill.description} onChange={(value) => update("description", value)} multiline placeholder="Describe the drill setup and execution..." />
-          <Input label="Coaching Points" value={drill.coachingPoints} onChange={(value) => update("coachingPoints", value)} multiline rows={2} placeholder="Key things to focus on and correct..." />
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "0 16px" }}>
-            <Input label="Progressions / Variations" value={drill.progressions} onChange={(value) => update("progressions", value)} multiline rows={2} placeholder="How to make it harder or easier..." />
-            <Input label="Common Mistakes" value={drill.commonMistakes} onChange={(value) => update("commonMistakes", value)} multiline rows={2} placeholder="What to watch out for..." />
+          <Input label="Description" value={drill.description} onChange={v => update("description", v)} multiline placeholder="Describe the drill setup and execution..." />
+          <Input label="Coaching Points" value={drill.coachingPoints} onChange={v => update("coachingPoints", v)} multiline rows={2} placeholder="Key things to focus on and correct..." />
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+            <Input label="Progressions / Variations" value={drill.progressions} onChange={v => update("progressions", v)} multiline rows={2} placeholder="How to make it harder or easier..." />
+            <Input label="Common Mistakes" value={drill.commonMistakes} onChange={v => update("commonMistakes", v)} multiline rows={2} placeholder="What to watch out for..." />
           </div>
-          <MultiSelect label="Equipment" selected={drill.equipment} options={EQUIPMENT_OPTIONS} onChange={(value) => update("equipment", value)} />
-          <Input label="Additional Notes" value={drill.notes} onChange={(value) => update("notes", value)} multiline rows={2} placeholder="Any extra notes..." />
+          <MultiSelect label="Equipment" selected={drill.equipment} options={EQUIPMENT_OPTIONS} onChange={v => update("equipment", v)} />
+          <Input label="Additional Notes" value={drill.notes} onChange={v => update("notes", v)} multiline rows={2} placeholder="Any extra notes..." />
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
 
 function SessionEditor({ session, onChange, onBack }) {
-  const update = (field, value) => onChange({ ...session, [field]: value });
-  const updateDrill = (index, drill) => {
-    const next = [...session.drills];
-    next[index] = drill;
-    update("drills", next);
-  };
-  const deleteDrill = (index) => update("drills", session.drills.filter((_, currentIndex) => currentIndex !== index));
+  const update = (field, val) => onChange({ ...session, [field]: val });
+  const updateDrill = (i, d) => { const arr = [...session.drills]; arr[i] = d; update("drills", arr); };
+  const deleteDrill = (i) => update("drills", session.drills.filter((_, idx) => idx !== i));
   const addDrill = () => update("drills", [...session.drills, emptyDrill()]);
-  const totalTime = session.drills.reduce((sum, drill) => sum + (drill.duration || 0), 0);
-
+  const totalTime = session.drills.reduce((s, d) => s + (d.duration || 0), 0);
   return (
     <div>
-      <button
-        type="button"
-        onClick={onBack}
-        style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", color: colors.textMuted, marginBottom: 16, fontSize: 13, fontWeight: 600 }}
-      >
-        <ArrowLeft size={16} />
-        Back
-      </button>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16, marginBottom: 14 }}>
-        <Input label="Session Name" value={session.name} onChange={(value) => update("name", value)} />
-        <Select label="Primary Focus" value={session.focus} onChange={(value) => update("focus", value)} options={SKILL_CATEGORIES} />
+      <button type="button" onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", color: colors.textMuted, marginBottom: 16, fontSize: 13, fontWeight: 600 }}><ArrowLeft size={16} /> Back</button>
+      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16, marginBottom: 14 }}>
+        <Input label="Session Name" value={session.name} onChange={v => update("name", v)} />
+        <Select label="Primary Focus" value={session.focus} onChange={v => update("focus", v)} options={SKILL_CATEGORIES} />
       </div>
       <div style={{ display: "flex", gap: 12, marginBottom: 18, flexWrap: "wrap" }}>
-        <Badge color={colors.accentLight} textColor={colors.accent} style={{ fontSize: 13, padding: "6px 14px" }}>
-          <Clock size={14} style={{ marginRight: 4, verticalAlign: "middle" }} /> {totalTime} min total
-        </Badge>
-        <Badge color={colors.warmLight} textColor="#92400e" style={{ fontSize: 13, padding: "6px 14px" }}>
-          <Layers size={14} style={{ marginRight: 4, verticalAlign: "middle" }} /> {session.drills.length} drills
-        </Badge>
-        {session.phase ? (
-          <Badge
-            color={PHASES.find((phase) => phase.name === session.phase)?.bg || colors.bg}
-            textColor={PHASES.find((phase) => phase.name === session.phase)?.color || colors.textMuted}
-            style={{ fontSize: 13, padding: "6px 14px" }}
-          >
-            {session.phase}
-          </Badge>
-        ) : null}
+        <Badge color={colors.accentLight} textColor={colors.accent} style={{ fontSize: 13, padding: "6px 14px" }}><Clock size={14} style={{ marginRight: 4, verticalAlign: "middle" }} /> {totalTime} min total</Badge>
+        <Badge color={colors.warmLight} textColor="#92400e" style={{ fontSize: 13, padding: "6px 14px" }}><Layers size={14} style={{ marginRight: 4, verticalAlign: "middle" }} /> {session.drills.length} drills</Badge>
+        {session.phase && <Badge color={PHASES.find(p => p.name === session.phase)?.bg || colors.bg} textColor={PHASES.find(p => p.name === session.phase)?.color || colors.textMuted} style={{ fontSize: 13, padding: "6px 14px" }}>{session.phase}</Badge>}
       </div>
-      {session.drills.map((drill, index) => (
-        <DrillEditor key={drill.id} drill={drill} index={index} onChange={(nextDrill) => updateDrill(index, nextDrill)} onDelete={() => deleteDrill(index)} />
-      ))}
-      <Button onClick={addDrill} variant="secondary" style={{ marginTop: 8 }}>
-        <Plus size={14} />
-        Add Drill
-      </Button>
+      {session.drills.map((d, i) => <DrillEditor key={d.id} drill={d} index={i} onChange={dr => updateDrill(i, dr)} onDelete={() => deleteDrill(i)} />)}
+      <Button onClick={addDrill} variant="secondary" style={{ marginTop: 8 }}><Plus size={14} /> Add Drill</Button>
     </div>
   );
 }
 
 function SessionCard({ session, onOpen, onDuplicate, onDelete }) {
-  const totalTime = session.drills.reduce((sum, drill) => sum + (drill.duration || 0), 0);
-  const phase = PHASES.find((item) => item.name === session.phase);
-
+  const totalTime = session.drills.reduce((s, d) => s + (d.duration || 0), 0);
+  const phase = PHASES.find(p => p.name === session.phase);
   return (
-    <div
-      style={{
-        border: `1px solid ${colors.border}`,
-        borderRadius: 8,
-        padding: 16,
-        background: colors.card,
-        cursor: "pointer",
-        transition: "box-shadow 0.15s",
-        borderLeft: phase ? `4px solid ${phase.color}` : undefined,
-      }}
-      onClick={onOpen}
-      onMouseEnter={(event) => {
-        event.currentTarget.style.boxShadow = "0 2px 12px rgba(0,0,0,0.08)";
-      }}
-      onMouseLeave={(event) => {
-        event.currentTarget.style.boxShadow = "none";
-      }}
-    >
+    <div style={{ border: "1px solid " + colors.border, borderRadius: 8, padding: 16, background: colors.card, cursor: "pointer", transition: "box-shadow 0.15s", borderLeft: phase ? "4px solid " + phase.color : undefined }} onClick={onOpen}
+      onMouseEnter={e => e.currentTarget.style.boxShadow = "0 2px 12px rgba(0,0,0,0.08)"}
+      onMouseLeave={e => e.currentTarget.style.boxShadow = "none"}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
         <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, lineHeight: 1.3 }}>{session.name}</h3>
         <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onDuplicate();
-            }}
-            title="Duplicate"
-            style={{ background: "none", border: "none", cursor: "pointer", color: colors.textMuted, padding: 4 }}
-          >
-            <Copy size={14} />
-          </button>
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onDelete();
-            }}
-            title="Delete"
-            style={{ background: "none", border: "none", cursor: "pointer", color: colors.danger, padding: 4 }}
-          >
-            <Trash2 size={14} />
-          </button>
+          <button type="button" onClick={e => { e.stopPropagation(); onDuplicate(); }} title="Duplicate" style={{ background: "none", border: "none", cursor: "pointer", color: colors.textMuted, padding: 4 }}><Copy size={14} /></button>
+          <button type="button" onClick={e => { e.stopPropagation(); onDelete(); }} title="Delete" style={{ background: "none", border: "none", cursor: "pointer", color: colors.danger, padding: 4 }}><Trash2 size={14} /></button>
         </div>
       </div>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
         <Badge>{session.focus}</Badge>
-        <Badge color={colors.bg} textColor={colors.textMuted}>
-          <Clock size={11} style={{ marginRight: 3, verticalAlign: "middle" }} />
-          {totalTime}m
-        </Badge>
+        <Badge color={colors.bg} textColor={colors.textMuted}><Clock size={11} style={{ marginRight: 3, verticalAlign: "middle" }} />{totalTime}m</Badge>
         <Badge color={colors.bg} textColor={colors.textMuted}>{session.drills.length} drills</Badge>
       </div>
       <div style={{ fontSize: 11, color: colors.textMuted, lineHeight: 1.4 }}>
-        {session.drills.slice(0, 3).map((drill) => drill.name || "Unnamed").join(" -> ")}
-        {session.drills.length > 3 ? " -> ..." : ""}
+        {session.drills.slice(0, 3).map(d => d.name || "Unnamed").join(" \u2192 ")}{session.drills.length > 3 ? " \u2192 ..." : ""}
       </div>
     </div>
   );
 }
 
 function SessionPrintView({ session }) {
-  const totalTime = session.drills.reduce((sum, drill) => sum + (drill.duration || 0), 0);
-
+  const totalTime = session.drills.reduce((s, d) => s + (d.duration || 0), 0);
   return (
-    <div style={{ padding: 24, maxWidth: 800, margin: "0 auto", fontFamily: "Georgia, serif" }}>
-      <h1 style={{ fontSize: 22, fontWeight: 700, borderBottom: `3px solid ${colors.accent}`, paddingBottom: 8 }}>{session.name}</h1>
-      <div style={{ display: "flex", gap: 20, marginBottom: 20, fontSize: 14, color: colors.textMuted, flexWrap: "wrap" }}>
-        <span>
-          Focus: <strong>{session.focus}</strong>
-        </span>
-        <span>
-          Duration: <strong>{totalTime} min</strong>
-        </span>
-        <span>
-          Drills: <strong>{session.drills.length}</strong>
-        </span>
+    <div style={{ padding: 24, maxWidth: 800, margin: "0 auto", fontFamily: "'Georgia', serif" }}>
+      <h1 style={{ fontSize: 22, fontWeight: 700, borderBottom: "3px solid " + colors.accent, paddingBottom: 8 }}>{session.name}</h1>
+      <div style={{ display: "flex", gap: 20, marginBottom: 20, fontSize: 14, color: colors.textMuted }}>
+        <span>Focus: <strong>{session.focus}</strong></span>
+        <span>Duration: <strong>{totalTime} min</strong></span>
+        <span>Drills: <strong>{session.drills.length}</strong></span>
       </div>
-      {session.drills.map((drill, index) => (
-        <div key={drill.id} style={{ marginBottom: 18, padding: 14, border: `1px solid ${colors.border}`, borderRadius: 8 }}>
+      {session.drills.map((d, i) => (
+        <div key={d.id} style={{ marginBottom: 18, padding: 14, border: "1px solid " + colors.border, borderRadius: 8 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6, flexWrap: "wrap", gap: 6 }}>
-            <h3 style={{ margin: 0, fontSize: 15 }}>
-              #{index + 1} — {drill.name}
-            </h3>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              <Badge color={`${intensityColor(drill.intensity)}44`} textColor="#333">
-                {drill.intensity}
-              </Badge>
-              <Badge>{drill.category}</Badge>
-              <Badge color={colors.bg} textColor={colors.textMuted}>
-                {drill.duration}m
-              </Badge>
+            <h3 style={{ margin: 0, fontSize: 15 }}>#{i + 1} \u2014 {d.name}</h3>
+            <div style={{ display: "flex", gap: 6 }}>
+              <Badge color={intensityColor(d.intensity) + "44"} textColor="#333">{d.intensity}</Badge>
+              <Badge>{d.category}</Badge>
+              <Badge color={colors.bg} textColor={colors.textMuted}>{d.duration}m</Badge>
             </div>
           </div>
-          {drill.description ? <p style={{ margin: "6px 0", fontSize: 13, lineHeight: 1.5 }}>{drill.description}</p> : null}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "6px 20px", fontSize: 13, marginTop: 8 }}>
-            {drill.reps ? (
-              <div>
-                <strong>Reps/Time:</strong> {drill.reps}
-              </div>
-            ) : null}
-            {drill.playerCount ? (
-              <div>
-                <strong>Players:</strong> {drill.playerCount}
-              </div>
-            ) : null}
-            {drill.equipment.length > 0 ? (
-              <div>
-                <strong>Equipment:</strong> {drill.equipment.join(", ")}
-              </div>
-            ) : null}
+          {d.description && <p style={{ margin: "6px 0", fontSize: 13, lineHeight: 1.5 }}>{d.description}</p>}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 20px", fontSize: 13, marginTop: 8 }}>
+            {d.reps && <div><strong>Reps/Time:</strong> {d.reps}</div>}
+            {d.playerCount && <div><strong>Players:</strong> {d.playerCount}</div>}
+            {d.equipment.length > 0 && <div><strong>Equipment:</strong> {d.equipment.join(", ")}</div>}
           </div>
-          {drill.coachingPoints ? (
-            <div style={{ marginTop: 8, padding: 10, background: colors.successLight, borderRadius: 6, fontSize: 13 }}>
-              <strong style={{ color: colors.success }}>Coaching Points:</strong> {drill.coachingPoints}
-            </div>
-          ) : null}
-          {drill.progressions ? (
-            <div style={{ marginTop: 6, padding: 10, background: colors.accentLight, borderRadius: 6, fontSize: 13 }}>
-              <strong style={{ color: colors.accent }}>Progressions:</strong> {drill.progressions}
-            </div>
-          ) : null}
-          {drill.commonMistakes ? (
-            <div style={{ marginTop: 6, padding: 10, background: colors.dangerLight, borderRadius: 6, fontSize: 13 }}>
-              <strong style={{ color: colors.danger }}>Watch For:</strong> {drill.commonMistakes}
-            </div>
-          ) : null}
+          {d.coachingPoints && <div style={{ marginTop: 8, padding: 10, background: colors.successLight, borderRadius: 6, fontSize: 13 }}><strong style={{ color: colors.success }}>Coaching Points:</strong> {d.coachingPoints}</div>}
+          {d.progressions && <div style={{ marginTop: 6, padding: 10, background: colors.accentLight, borderRadius: 6, fontSize: 13 }}><strong style={{ color: colors.accent }}>Progressions:</strong> {d.progressions}</div>}
+          {d.commonMistakes && <div style={{ marginTop: 6, padding: 10, background: colors.dangerLight, borderRadius: 6, fontSize: 13 }}><strong style={{ color: colors.danger }}>Watch For:</strong> {d.commonMistakes}</div>}
         </div>
       ))}
     </div>
@@ -644,46 +252,21 @@ function SessionPrintView({ session }) {
 }
 
 function WeekPlanner({ week, sessions, onChange }) {
-  const update = (day, sessionId) =>
-    onChange({
-      ...week,
-      days: {
-        ...week.days,
-        [day]: sessionId || null,
-      },
-    });
-
+  const update = (day, sessionId) => onChange({ ...week, days: { ...week.days, [day]: sessionId || null } });
   return (
-    <div style={{ border: `1px solid ${colors.border}`, borderRadius: 8, padding: 16, background: colors.card, marginBottom: 14 }}>
-      <Input label="Week Label" value={week.name} onChange={(value) => onChange({ ...week, name: value })} placeholder="e.g. Week 1 - Pre-Season Base" />
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))", gap: 8, marginTop: 8 }}>
-        {DAYS.map((day) => {
-          const assigned = sessions.find((session) => session.id === week.days[day]);
-
+    <div style={{ border: "1px solid " + colors.border, borderRadius: 8, padding: 16, background: colors.card, marginBottom: 14 }}>
+      <Input label="Week Label" value={week.name} onChange={v => onChange({ ...week, name: v })} placeholder="e.g. Week 1 \u2014 Pre-Season Base" />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 8, marginTop: 8 }}>
+        {DAYS.map(day => {
+          const assigned = sessions.find(s => s.id === week.days[day]);
           return (
             <div key={day} style={{ textAlign: "center" }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: colors.textMuted, marginBottom: 6, textTransform: "uppercase" }}>{day.slice(0, 3)}</div>
-              <select
-                value={week.days[day] || ""}
-                onChange={(event) => update(day, event.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "6px 2px",
-                  borderRadius: 6,
-                  border: `1px solid ${colors.border}`,
-                  fontSize: 10,
-                  background: week.days[day] ? colors.accentLight : "#fff",
-                  color: week.days[day] ? colors.accent : colors.textMuted,
-                }}
-              >
+              <select value={week.days[day] || ""} onChange={e => update(day, e.target.value)} style={{ width: "100%", padding: "6px 2px", borderRadius: 6, border: "1px solid " + colors.border, fontSize: 10, background: week.days[day] ? colors.accentLight : "#fff", color: week.days[day] ? colors.accent : colors.textMuted }}>
                 <option value="">Rest</option>
-                {sessions.map((session) => (
-                  <option key={session.id} value={session.id}>
-                    {session.name.length > 30 ? `${session.name.slice(0, 30)}...` : session.name}
-                  </option>
-                ))}
+                {sessions.map(s => <option key={s.id} value={s.id}>{s.name.length > 30 ? s.name.slice(0, 30) + "..." : s.name}</option>)}
               </select>
-              {assigned ? <div style={{ fontSize: 10, color: colors.accent, marginTop: 4 }}>{assigned.drills.reduce((sum, drill) => sum + drill.duration, 0)}m</div> : null}
+              {assigned && <div style={{ fontSize: 10, color: colors.accent, marginTop: 4 }}>{assigned.drills.reduce((s, d) => s + d.duration, 0)}m</div>}
             </div>
           );
         })}
@@ -694,62 +277,36 @@ function WeekPlanner({ week, sessions, onChange }) {
 
 function BlockEditor({ block, sessions, onChange, onDelete }) {
   const [open, setOpen] = useState(true);
-  const update = (field, value) => onChange({ ...block, [field]: value });
-  const updateWeek = (index, week) => {
-    const next = [...block.weeks];
-    next[index] = week;
-    update("weeks", next);
-  };
+  const update = (field, val) => onChange({ ...block, [field]: val });
+  const updateWeek = (i, w) => { const arr = [...block.weeks]; arr[i] = w; update("weeks", arr); };
   const addWeek = () => update("weeks", [...block.weeks, emptyWeek()]);
-  const removeWeek = (index) => update("weeks", block.weeks.filter((_, currentIndex) => currentIndex !== index));
-
+  const removeWeek = (i) => update("weeks", block.weeks.filter((_, idx) => idx !== i));
   return (
-    <div style={{ border: `1px solid ${colors.border}`, borderRadius: 10, marginBottom: 20, overflow: "hidden", background: colors.card }}>
-      <div
-        onClick={() => setOpen(!open)}
-        style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", cursor: "pointer", background: open ? colors.bg : colors.card, borderBottom: open ? `1px solid ${colors.border}` : "none" }}
-      >
+    <div style={{ border: "1px solid " + colors.border, borderRadius: 10, marginBottom: 20, overflow: "hidden", background: colors.card }}>
+      <div onClick={() => setOpen(!open)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", cursor: "pointer", background: open ? colors.bg : colors.card, borderBottom: open ? "1px solid " + colors.border : "none" }}>
         {open ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
         <span style={{ fontWeight: 700, flex: 1, fontSize: 16 }}>{block.name || "Unnamed Block"}</span>
-        <Badge color={colors.warmLight} textColor="#92400e">
-          {block.weeks.length} week{block.weeks.length !== 1 ? "s" : ""}
-        </Badge>
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            onDelete();
-          }}
-          style={{ background: "none", border: "none", cursor: "pointer", color: colors.danger }}
-        >
-          <Trash2 size={16} />
-        </button>
+        <Badge color={colors.warmLight} textColor="#92400e">{block.weeks.length} week{block.weeks.length !== 1 ? "s" : ""}</Badge>
+        <button type="button" onClick={e => { e.stopPropagation(); onDelete(); }} style={{ background: "none", border: "none", cursor: "pointer", color: colors.danger }}><Trash2 size={16} /></button>
       </div>
-      {open ? (
+      {open && (
         <div style={{ padding: 18 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16, marginBottom: 16 }}>
-            <Input label="Block Name" value={block.name} onChange={(value) => update("name", value)} />
-            <Input label="Block Goal" value={block.goal} onChange={(value) => update("goal", value)} placeholder="e.g. Build aerobic base and confidence" />
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 16, marginBottom: 16 }}>
+            <Input label="Block Name" value={block.name} onChange={v => update("name", v)} />
+            <Input label="Block Goal" value={block.goal} onChange={v => update("goal", v)} placeholder="e.g. Build aerobic base and confidence" />
           </div>
-          {block.weeks.map((week, index) => (
-            <div key={week.id}>
+          {block.weeks.map((w, i) => (
+            <div key={w.id}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: colors.textMuted }}>WEEK {index + 1}</span>
-                {block.weeks.length > 1 ? (
-                  <button type="button" onClick={() => removeWeek(index)} style={{ background: "none", border: "none", cursor: "pointer", color: colors.danger }}>
-                    <X size={14} />
-                  </button>
-                ) : null}
+                <span style={{ fontSize: 13, fontWeight: 700, color: colors.textMuted }}>WEEK {i + 1}</span>
+                {block.weeks.length > 1 && <button type="button" onClick={() => removeWeek(i)} style={{ background: "none", border: "none", cursor: "pointer", color: colors.danger }}><X size={14} /></button>}
               </div>
-              <WeekPlanner week={week} sessions={sessions} onChange={(nextWeek) => updateWeek(index, nextWeek)} />
+              <WeekPlanner week={w} sessions={sessions} onChange={wk => updateWeek(i, wk)} />
             </div>
           ))}
-          <Button onClick={addWeek} variant="secondary" size="sm">
-            <Plus size={14} />
-            Add Week
-          </Button>
+          <Button onClick={addWeek} variant="secondary" size="sm"><Plus size={14} /> Add Week</Button>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
@@ -757,87 +314,44 @@ function BlockEditor({ block, sessions, onChange, onDelete }) {
 function PhaseSidebar({ activePhase, activeWeek, sessions, onSelectPhase, onSelectWeek }) {
   const weeksByPhase = useMemo(() => {
     const map = {};
-    sessions.forEach((session) => {
-      if (!session.phase) {
-        return;
-      }
-      if (!map[session.phase]) {
-        map[session.phase] = new Set();
-      }
-      map[session.phase].add(String(session.week));
+    sessions.forEach(s => {
+      if (!s.phase) return;
+      if (!map[s.phase]) map[s.phase] = new Set();
+      map[s.phase].add(String(s.week));
     });
     return map;
   }, [sessions]);
 
   return (
-    <div style={{ width: 220, flexShrink: 0, borderRight: `1px solid ${colors.border}`, background: "#fff", padding: "12px 0", overflowY: "auto" }}>
+    <div style={{ width: 220, flexShrink: 0, borderRight: "1px solid " + colors.border, background: "#fff", padding: "12px 0", overflowY: "auto" }}>
       <div style={{ padding: "0 14px 10px", fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: colors.textMuted, letterSpacing: 0.5 }}>Season Phases</div>
-      <button
-        type="button"
-        onClick={() => {
-          onSelectPhase(null);
-          onSelectWeek(null);
-        }}
-        style={{ width: "100%", textAlign: "left", padding: "8px 14px", border: "none", background: !activePhase ? colors.accentLight : "transparent", color: !activePhase ? colors.accent : colors.text, cursor: "pointer", fontSize: 13, fontWeight: !activePhase ? 700 : 500 }}
-      >
-        All Sessions
-      </button>
-      {PHASES.map((phase) => (
-        <div key={phase.num}>
-          <button
-            type="button"
-            onClick={() => {
-              onSelectPhase(phase.name);
-              onSelectWeek(null);
-            }}
-            style={{
-              width: "100%",
-              textAlign: "left",
-              padding: "8px 14px",
-              border: "none",
-              background: activePhase === phase.name && !activeWeek ? phase.bg : "transparent",
-              color: activePhase === phase.name ? phase.color : colors.text,
-              cursor: "pointer",
-              fontSize: 13,
-              fontWeight: activePhase === phase.name ? 700 : 500,
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-            }}
-          >
-            <span style={{ width: 8, height: 8, borderRadius: 4, background: phase.color, flexShrink: 0 }} />
-            {phase.name}
+      <button type="button" onClick={() => { onSelectPhase(null); onSelectWeek(null); }} style={{ width: "100%", textAlign: "left", padding: "8px 14px", border: "none", background: !activePhase ? colors.accentLight : "transparent", color: !activePhase ? colors.accent : colors.text, cursor: "pointer", fontSize: 13, fontWeight: !activePhase ? 700 : 500 }}>All Sessions</button>
+      {PHASES.map(p => (
+        <div key={p.num}>
+          <button type="button" onClick={() => { onSelectPhase(p.name); onSelectWeek(null); }} style={{ width: "100%", textAlign: "left", padding: "8px 14px", border: "none", background: activePhase === p.name && !activeWeek ? p.bg : "transparent", color: activePhase === p.name ? p.color : colors.text, cursor: "pointer", fontSize: 13, fontWeight: activePhase === p.name ? 700 : 500, display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ width: 8, height: 8, borderRadius: 4, background: p.color, flexShrink: 0 }} />
+            {p.name}
           </button>
-          {activePhase === phase.name && weeksByPhase[phase.name] ? (
+          {activePhase === p.name && weeksByPhase[p.name] && (
             <div style={{ paddingLeft: 30 }}>
-              {[...weeksByPhase[phase.name]]
-                .sort((left, right) => {
-                  const leftNumber = parseInt(left, 10);
-                  const rightNumber = parseInt(right, 10);
-                  if (!Number.isNaN(leftNumber) && !Number.isNaN(rightNumber)) {
-                    return leftNumber - rightNumber;
-                  }
-                  return left.localeCompare(right);
-                })
-                .map((week) => (
-                  <button
-                    key={week}
-                    type="button"
-                    onClick={() => onSelectWeek(week)}
-                    style={{ width: "100%", textAlign: "left", padding: "5px 10px", border: "none", background: activeWeek === week ? phase.bg : "transparent", color: activeWeek === week ? phase.color : colors.textMuted, cursor: "pointer", fontSize: 12, fontWeight: activeWeek === week ? 700 : 400, borderRadius: 4 }}
-                  >
-                    {Number.isNaN(parseInt(week, 10)) ? week : `Week ${week}`}
-                  </button>
-                ))}
+              {[...weeksByPhase[p.name]].sort((a, b) => {
+                const na = parseInt(a), nb = parseInt(b);
+                if (!isNaN(na) && !isNaN(nb)) return na - nb;
+                return a.localeCompare(b);
+              }).map(w => (
+                <button type="button" key={w} onClick={() => onSelectWeek(w)} style={{ width: "100%", textAlign: "left", padding: "5px 10px", border: "none", background: activeWeek === w ? p.bg : "transparent", color: activeWeek === w ? p.color : colors.textMuted, cursor: "pointer", fontSize: 12, fontWeight: activeWeek === w ? 700 : 400, borderRadius: 4 }}>
+                  {isNaN(parseInt(w)) ? w : "Week " + w}
+                </button>
+              ))}
             </div>
-          ) : null}
+          )}
         </div>
       ))}
     </div>
   );
 }
 
-export default function App() {
+export default function GKCoachPlanner() {
   const [tab, setTab] = useState("season");
   const [sessions, setSessions] = useState(() => expandRaw(RAW));
   const [blocks, setBlocks] = useState([]);
@@ -848,229 +362,132 @@ export default function App() {
   const [activePhase, setActivePhase] = useState(null);
   const [activeWeek, setActiveWeek] = useState(null);
 
-  const filteredSessions = useMemo(
-    () =>
-      sessions.filter((session) => {
-        const normalizedSearch = searchTerm.toLowerCase();
-        const matchesSearch =
-          !searchTerm ||
-          session.name.toLowerCase().includes(normalizedSearch) ||
-          session.drills.some((drill) => drill.name.toLowerCase().includes(normalizedSearch));
-        const matchesCategory = filterCategory === "All" || session.focus === filterCategory;
-        const matchesPhase = !activePhase || session.phase === activePhase;
-        const matchesWeek = !activeWeek || String(session.week) === activeWeek;
+  const filteredSessions = useMemo(() => {
+    return sessions.filter(s => {
+      const matchSearch = !searchTerm || s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.drills.some(d => d.name.toLowerCase().includes(searchTerm.toLowerCase()));
+      const matchCategory = filterCategory === "All" || s.focus === filterCategory;
+      const matchPhase = !activePhase || s.phase === activePhase;
+      const matchWeek = !activeWeek || String(s.week) === activeWeek;
+      return matchSearch && matchCategory && matchPhase && matchWeek;
+    });
+  }, [sessions, searchTerm, filterCategory, activePhase, activeWeek]);
 
-        return matchesSearch && matchesCategory && matchesPhase && matchesWeek;
-      }),
-    [sessions, searchTerm, filterCategory, activePhase, activeWeek],
-  );
-
-  const addSession = () => {
-    const session = emptySession();
-    setSessions([...sessions, session]);
-    setEditingSession(session.id);
+  const addSession = () => { const s = emptySession(); setSessions([...sessions, s]); setEditingSession(s.id); };
+  const duplicateSession = (s) => {
+    const ns = { ...JSON.parse(JSON.stringify(s)), id: uid(), name: s.name + " (Copy)" };
+    ns.drills = ns.drills.map(d => ({ ...d, id: uid() }));
+    setSessions([...sessions, ns]);
   };
-
-  const duplicateSession = (session) => {
-    const nextSession = { ...JSON.parse(JSON.stringify(session)), id: uid(), name: `${session.name} (Copy)` };
-    nextSession.drills = nextSession.drills.map((drill) => ({ ...drill, id: uid() }));
-    setSessions([...sessions, nextSession]);
-  };
-
-  const updateSession = (updatedSession) =>
-    setSessions(sessions.map((session) => (session.id === updatedSession.id ? updatedSession : session)));
-
-  const deleteSession = (id) => {
-    setSessions(sessions.filter((session) => session.id !== id));
-    if (editingSession === id) {
-      setEditingSession(null);
-    }
-  };
-
+  const updateSession = (u) => setSessions(sessions.map(s => s.id === u.id ? u : s));
+  const deleteSession = (id) => { setSessions(sessions.filter(s => s.id !== id)); if (editingSession === id) setEditingSession(null); };
   const addBlock = () => setBlocks([...blocks, emptyBlock()]);
-  const updateBlock = (index, block) => setBlocks(blocks.map((item, currentIndex) => (currentIndex === index ? block : item)));
-  const deleteBlock = (index) => setBlocks(blocks.filter((_, currentIndex) => currentIndex !== index));
+  const updateBlock = (i, b) => { const arr = [...blocks]; arr[i] = b; setBlocks(arr); };
+  const deleteBlock = (i) => setBlocks(blocks.filter((_, idx) => idx !== i));
 
   if (viewingSession) {
-    const session = sessions.find((item) => item.id === viewingSession);
-
+    const s = sessions.find(s => s.id === viewingSession);
     return (
       <div style={{ minHeight: "100vh", background: colors.bg, fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
-        <div style={{ padding: "12px 24px", background: "#fff", borderBottom: `1px solid ${colors.border}`, display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-          <Button onClick={() => setViewingSession(null)} variant="ghost">
-            <ArrowLeft size={16} />
-            Back
-          </Button>
-          <Button
-            onClick={() => {
-              if (!session) {
-                return;
-              }
-              setViewingSession(null);
-              setEditingSession(session.id);
-              setTab("season");
-            }}
-            variant="secondary"
-          >
-            <Edit3 size={14} />
-            Edit
-          </Button>
+        <div style={{ padding: "12px 24px", background: "#fff", borderBottom: "1px solid " + colors.border, display: "flex", justifyContent: "space-between" }}>
+          <Button onClick={() => setViewingSession(null)} variant="ghost"><ArrowLeft size={16} /> Back</Button>
+          <Button onClick={() => { setViewingSession(null); setEditingSession(s.id); setTab("season"); }} variant="secondary"><Edit3 size={14} /> Edit</Button>
         </div>
-        {session ? <SessionPrintView session={session} /> : null}
+        {s && <SessionPrintView session={s} />}
       </div>
     );
   }
 
-  const editing = sessions.find((session) => session.id === editingSession);
+  const editing = sessions.find(s => s.id === editingSession);
   const weekFocus = activeWeek && filteredSessions.length > 0 ? filteredSessions[0].weekFocus : null;
-  const totalDrillsCount = sessions.reduce((sum, session) => sum + session.drills.length, 0);
+  const totalDrillsCount = sessions.reduce((a, s) => a + s.drills.length, 0);
 
   return (
     <div style={{ minHeight: "100vh", background: colors.bg, fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", color: colors.text }}>
-      <div style={{ background: "#fff", borderBottom: `1px solid ${colors.border}`, padding: "14px 24px" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+      <div style={{ background: "#fff", borderBottom: "1px solid " + colors.border, padding: "14px 24px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 36, height: 36, background: colors.accent, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Shield size={20} color="#fff" />
-            </div>
+            <div style={{ width: 36, height: 36, background: colors.accent, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}><Shield size={20} color="#fff" /></div>
             <div>
               <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, letterSpacing: -0.5 }}>GK Coach Planner</h1>
-              <p style={{ margin: 0, fontSize: 11, color: colors.textMuted }}>College Soccer • Full Fall Season • 3 GKs • Planner Website</p>
+              <p style={{ margin: 0, fontSize: 11, color: colors.textMuted }}>College Soccer \u2022 Full Fall Season \u2022 3 GKs \u2022 16 Weeks + Playoffs</p>
             </div>
           </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <Badge color={colors.successLight} textColor={colors.success} style={{ fontSize: 12, padding: "5px 12px" }}>
-              {sessions.length} Sessions
-            </Badge>
-            <Badge color={colors.warmLight} textColor="#92400e" style={{ fontSize: 12, padding: "5px 12px" }}>
-              {totalDrillsCount} Drills
-            </Badge>
+          <div style={{ display: "flex", gap: 8 }}>
+            <Badge color={colors.successLight} textColor={colors.success} style={{ fontSize: 12, padding: "5px 12px" }}>{sessions.length} Sessions</Badge>
+            <Badge color={colors.warmLight} textColor="#92400e" style={{ fontSize: 12, padding: "5px 12px" }}>{totalDrillsCount} Drills</Badge>
           </div>
         </div>
       </div>
 
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "16px 24px" }}>
-        <Tabs
-          active={tab}
-          onSelect={(nextTab) => {
-            setTab(nextTab);
-            setEditingSession(null);
-          }}
-          tabs={[
-            { key: "season", label: "Season Plan", icon: <Calendar size={16} /> },
-            { key: "sessions", label: "All Sessions", icon: <Target size={16} /> },
-            { key: "periodization", label: "Custom Blocks", icon: <Layers size={16} /> },
-          ]}
-        />
+        <Tabs active={tab} onSelect={t => { setTab(t); setEditingSession(null); }} tabs={[
+          { key: "season", label: "Season Plan", icon: <Calendar size={16} /> },
+          { key: "sessions", label: "All Sessions", icon: <Target size={16} /> },
+          { key: "periodization", label: "Custom Blocks", icon: <Layers size={16} /> },
+        ]} />
 
-        {tab === "season" && !editing ? (
-          <div style={{ display: "flex", gap: 0, flexWrap: "wrap" }}>
-            <div style={{ width: "100%", maxWidth: 220 }}>
-              <PhaseSidebar activePhase={activePhase} activeWeek={activeWeek} sessions={sessions} onSelectPhase={setActivePhase} onSelectWeek={setActiveWeek} />
-            </div>
-            <div style={{ flex: 1, minWidth: 300, paddingLeft: 20 }}>
-              {weekFocus ? (
-                <div style={{ marginBottom: 14, padding: "10px 14px", background: "#fff", border: `1px solid ${colors.border}`, borderRadius: 8 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: colors.textMuted, textTransform: "uppercase" }}>Week Focus:</span>{" "}
-                  <span style={{ fontSize: 14, fontWeight: 600 }}>{weekFocus}</span>
-                </div>
-              ) : null}
-              <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
-                <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Search sessions or drills..." style={{ flex: 1, minWidth: 220, padding: "7px 12px", border: `1px solid ${colors.border}`, borderRadius: 6, fontSize: 13 }} />
-                <Button onClick={addSession} size="sm">
-                  <Plus size={14} />
-                  New
-                </Button>
+        {tab === "season" && !editing && (
+          <div style={{ display: "flex", gap: 0 }}>
+            <PhaseSidebar activePhase={activePhase} activeWeek={activeWeek} sessions={sessions} onSelectPhase={setActivePhase} onSelectWeek={setActiveWeek} />
+            <div style={{ flex: 1, paddingLeft: 20 }}>
+              {weekFocus && <div style={{ marginBottom: 14, padding: "10px 14px", background: "#fff", border: "1px solid " + colors.border, borderRadius: 8 }}><span style={{ fontSize: 12, fontWeight: 700, color: colors.textMuted, textTransform: "uppercase" }}>Week Focus:</span> <span style={{ fontSize: 14, fontWeight: 600 }}>{weekFocus}</span></div>}
+              <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
+                <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search sessions or drills..." style={{ flex: 1, padding: "7px 12px", border: "1px solid " + colors.border, borderRadius: 6, fontSize: 13 }} />
+                <Button onClick={addSession} size="sm"><Plus size={14} /> New</Button>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 12 }}>
-                {filteredSessions.map((session) => (
-                  <SessionCard key={session.id} session={session} onOpen={() => setEditingSession(session.id)} onDuplicate={() => duplicateSession(session)} onDelete={() => deleteSession(session.id)} />
-                ))}
+                {filteredSessions.map(s => <SessionCard key={s.id} session={s} onOpen={() => setEditingSession(s.id)} onDuplicate={() => duplicateSession(s)} onDelete={() => deleteSession(s.id)} />)}
               </div>
-              {filteredSessions.length === 0 ? (
-                <div style={{ textAlign: "center", padding: 50, color: colors.textMuted }}>
-                  <Target size={36} style={{ opacity: 0.3, marginBottom: 10 }} />
-                  <p>No sessions for this filter.</p>
-                </div>
-              ) : null}
+              {filteredSessions.length === 0 && <div style={{ textAlign: "center", padding: 50, color: colors.textMuted }}><Target size={36} style={{ opacity: 0.3, marginBottom: 10 }} /><p>No sessions for this filter.</p></div>}
             </div>
           </div>
-        ) : null}
-
-        {tab === "season" && editing ? (
+        )}
+        {tab === "season" && editing && (
           <>
-            <Button onClick={() => setViewingSession(editing.id)} variant="secondary" size="sm" style={{ marginBottom: 12 }}>
-              <CheckCircle2 size={14} />
-              View Session
-            </Button>
+            <Button onClick={() => setViewingSession(editing.id)} variant="secondary" size="sm" style={{ marginBottom: 12 }}><CheckCircle2 size={14} /> View Session</Button>
             <SessionEditor session={editing} onChange={updateSession} onBack={() => setEditingSession(null)} />
           </>
-        ) : null}
+        )}
 
-        {tab === "sessions" && !editing ? (
+        {tab === "sessions" && !editing && (
           <div>
             <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
-              <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Search..." style={{ flex: 1, minWidth: 180, padding: "7px 12px", border: `1px solid ${colors.border}`, borderRadius: 6, fontSize: 13 }} />
-              <select value={filterCategory} onChange={(event) => setFilterCategory(event.target.value)} style={{ padding: "7px 12px", border: `1px solid ${colors.border}`, borderRadius: 6, fontSize: 13 }}>
+              <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search..." style={{ flex: 1, minWidth: 180, padding: "7px 12px", border: "1px solid " + colors.border, borderRadius: 6, fontSize: 13 }} />
+              <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} style={{ padding: "7px 12px", border: "1px solid " + colors.border, borderRadius: 6, fontSize: 13 }}>
                 <option value="All">All Categories</option>
-                {SKILL_CATEGORIES.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
+                {SKILL_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
-              <Button onClick={addSession}>
-                <Plus size={14} />
-                New Session
-              </Button>
+              <Button onClick={addSession}><Plus size={14} /> New Session</Button>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 12 }}>
-              {sessions
-                .filter((session) => {
-                  const matchesSearch = !searchTerm || session.name.toLowerCase().includes(searchTerm.toLowerCase());
-                  const matchesCategory = filterCategory === "All" || session.focus === filterCategory;
-                  return matchesSearch && matchesCategory;
-                })
-                .map((session) => (
-                  <SessionCard key={session.id} session={session} onOpen={() => setEditingSession(session.id)} onDuplicate={() => duplicateSession(session)} onDelete={() => deleteSession(session.id)} />
-                ))}
+              {sessions.filter(s => {
+                const ms = !searchTerm || s.name.toLowerCase().includes(searchTerm.toLowerCase());
+                const mc = filterCategory === "All" || s.focus === filterCategory;
+                return ms && mc;
+              }).map(s => <SessionCard key={s.id} session={s} onOpen={() => setEditingSession(s.id)} onDuplicate={() => duplicateSession(s)} onDelete={() => deleteSession(s.id)} />)}
             </div>
           </div>
-        ) : null}
-
-        {tab === "sessions" && editing ? (
+        )}
+        {tab === "sessions" && editing && (
           <>
-            <Button onClick={() => setViewingSession(editing.id)} variant="secondary" size="sm" style={{ marginBottom: 12 }}>
-              <CheckCircle2 size={14} />
-              View
-            </Button>
+            <Button onClick={() => setViewingSession(editing.id)} variant="secondary" size="sm" style={{ marginBottom: 12 }}><CheckCircle2 size={14} /> View</Button>
             <SessionEditor session={editing} onChange={updateSession} onBack={() => setEditingSession(null)} />
           </>
-        ) : null}
+        )}
 
-        {tab === "periodization" ? (
+        {tab === "periodization" && (
           <div>
-            <div style={{ marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Custom Training Blocks</h2>
                 <p style={{ margin: "4px 0 0", fontSize: 13, color: colors.textMuted }}>Create your own blocks and assign sessions to days.</p>
               </div>
-              <Button onClick={addBlock}>
-                <Plus size={14} />
-                New Block
-              </Button>
+              <Button onClick={addBlock}><Plus size={14} /> New Block</Button>
             </div>
-            {blocks.map((block, index) => (
-              <BlockEditor key={block.id} block={block} sessions={sessions} onChange={(nextBlock) => updateBlock(index, nextBlock)} onDelete={() => deleteBlock(index)} />
-            ))}
-            {blocks.length === 0 ? (
-              <div style={{ textAlign: "center", padding: 50, color: colors.textMuted }}>
-                <Calendar size={36} style={{ opacity: 0.3, marginBottom: 10 }} />
-                <p>No custom blocks yet. Your full season is already organized in the Season Plan tab.</p>
-              </div>
-            ) : null}
+            {blocks.map((b, i) => <BlockEditor key={b.id} block={b} sessions={sessions} onChange={bl => updateBlock(i, bl)} onDelete={() => deleteBlock(i)} />)}
+            {blocks.length === 0 && <div style={{ textAlign: "center", padding: 50, color: colors.textMuted }}><Calendar size={36} style={{ opacity: 0.3, marginBottom: 10 }} /><p>No custom blocks yet. Your full season is already organized in the Season Plan tab.</p></div>}
           </div>
-        ) : null}
+        )}
       </div>
     </div>
   );
